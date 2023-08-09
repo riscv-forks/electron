@@ -1,0 +1,36 @@
+From 98945f4d0486681970b0cc5e00d124adede852e6 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Tue, 29 Apr 2025 15:48:48 +0200
+Subject: [PATCH] HACK: disable tests when building clang toolchain
+
+Some sanitizer tests failed due to NPE.
+The sanitizers are not used for building riscv64 electron releases.
+Skipping tests as a workaround.
+
+ Failed Tests (7):
+   SanitizerCommon-asan-x86_64-Linux :: Linux/dn_expand.cpp
+   SanitizerCommon-asan-x86_64-Linux :: Linux/xdrrec.cpp
+   SanitizerCommon-msan-x86_64-Linux :: Linux/dn_expand.cpp
+   SanitizerCommon-msan-x86_64-Linux :: Linux/xdrrec.cpp
+   SanitizerCommon-tsan-x86_64-Linux :: Linux/dn_expand.cpp
+   SanitizerCommon-tsan-x86_64-Linux :: Linux/pthread_mutex.cpp
+   SanitizerCommon-tsan-x86_64-Linux :: Linux/xdrrec.cpp
+---
+ tools/clang/scripts/package.py | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/tools/clang/scripts/package.py b/tools/clang/scripts/package.py
+index 9b9d5ae0ba237..dcd0d4de5508d 100755
+--- a/tools/clang/scripts/package.py
++++ b/tools/clang/scripts/package.py
+@@ -239,7 +239,6 @@ def main():
+         os.path.join(THIS_DIR, 'build.py'),
+         '--bootstrap',
+         '--disable-asserts',
+-        '--run-tests',
+         '--without-android', '--without-fuchsia'
+     ]
+     # PGO drastically increases packaging time and x86-64 macs are almost
+-- 
+2.39.2
+
