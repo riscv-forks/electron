@@ -1,0 +1,209 @@
+From 793181377f3fadc5e239503d5f068cc7b9f65e65 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sat, 10 Feb 2024 09:19:00 +0800
+Subject: [PATCH] clang toolchain: riscv64 support
+
+And drop android and fuchsia build to reduce build time.
+---
+ build/config/clang/BUILD.gn    |  2 ++
+ tools/clang/scripts/build.py   | 21 +++++++++++-
+ tools/clang/scripts/package.py | 62 ++++++++++------------------------
+ 3 files changed, 40 insertions(+), 45 deletions(-)
+
+diff --git a/build/config/clang/BUILD.gn b/build/config/clang/BUILD.gn
+index cbb5230967b17..e66ab2b0ee211 100644
+--- a/build/config/clang/BUILD.gn
++++ b/build/config/clang/BUILD.gn
+@@ -204,6 +204,8 @@ template("clang_lib") {
+           _dir = "armv7-unknown-linux-gnueabihf"
+         } else if (current_cpu == "arm64") {
+           _dir = "aarch64-unknown-linux-gnu"
++        } else if (current_cpu == "riscv64") {
++          _dir = "riscv64-unknown-linux-gnu"
+         } else {
+           assert(false)  # Unhandled cpu type
+         }
+diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
+index 0a6e21456e86f..e88b3b63d2137 100755
+--- a/tools/clang/scripts/build.py
++++ b/tools/clang/scripts/build.py
+@@ -548,10 +548,17 @@ def DownloadDebianSysroot(platform_name, skip_download=False):
+       'arm': 'fe81e7114b97440262bce004caf02c1514732e2fa7f99693b2836932ad1c4626',
+       # hash from https://chromium-review.googlesource.com/c/chromium/src/+/5506275/1/build/linux/sysroot_scripts/sysroots.json#21
+       'arm64': '308e23faba3174bd01accfe358467b8a40fad4db4c49ef629da30219f65a275f',
++      'riscv64': 'SKIP',
+   }
+ 
+-  toolchain_name = f'debian_bullseye_{platform_name}_sysroot'
++  release = 'bullseye' if platform_name != 'riscv64' else 'sid'
++
++  toolchain_name = f'debian_{release}_{platform_name}_sysroot'
+   output = os.path.join(LLVM_BUILD_TOOLS_DIR, toolchain_name)
++
++  if hashes[platform_name] == 'SKIP':
++    return output
++
+   U = toolchain_bucket + hashes[platform_name]
+   if not skip_download:
+     DownloadAndUnpack(U, output)
+@@ -837,6 +844,7 @@ def main():
+     sysroot_i386 = DownloadDebianSysroot('i386', args.skip_checkout)
+     sysroot_arm = DownloadDebianSysroot('arm', args.skip_checkout)
+     sysroot_arm64 = DownloadDebianSysroot('arm64', args.skip_checkout)
++    sysroot_riscv64 = DownloadDebianSysroot('riscv64', args.skip_checkout)
+ 
+     # Add the sysroot to base_cmake_args.
+     if platform.machine() == 'aarch64':
+@@ -1197,6 +1205,17 @@ def main():
+         "sanitizers":
+         True,
+     }
++    runtimes_triples_args['riscv64-unknown-linux-gnu'] = {
++        "args": [
++            'CMAKE_SYSROOT=%s' % sysroot_riscv64,
++            # Can't run tests on x86 host.
++            'LLVM_INCLUDE_TESTS=OFF',
++        ],
++        "profile":
++        True,
++        "sanitizers":
++        True,
++    }
+   elif sys.platform == 'win32':
+     sysroot = os.path.dirname(os.path.dirname(GetWinSDKDir()))
+     runtimes_triples_args['i386-pc-windows-msvc'] = {
+diff --git a/tools/clang/scripts/package.py b/tools/clang/scripts/package.py
+index fa6c150751d62..fe1a904637b57 100755
+--- a/tools/clang/scripts/package.py
++++ b/tools/clang/scripts/package.py
+@@ -237,7 +237,7 @@ def main():
+     build_cmd = [
+         sys.executable,
+         os.path.join(THIS_DIR, 'build.py'), '--bootstrap', '--disable-asserts',
+-        '--run-tests', '--pgo'
++        '--without-android', '--without-fuchsia', '--pgo'
+     ]
+     if sys.platform != 'darwin':
+       build_cmd.append('--thinlto')
+@@ -294,16 +294,6 @@ def main():
+         # Add llvm-readobj (symlinked from llvm-readelf) for extracting SONAMEs.
+         'bin/llvm-readobj',
+     ])
+-    if sys.platform != 'darwin':
+-      # The Fuchsia runtimes are only built on non-Mac platforms.
+-      want.update([
+-          'lib/clang/$V/lib/aarch64-unknown-fuchsia/libclang_rt.builtins.a',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.builtins.a',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.profile.a',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan.so',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan-preinit.a',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan_static.a',
+-      ])
+   if sys.platform == 'darwin':
+     runtime_package_name = 'clang-mac-runtime-library'
+     runtime_packages = set([
+@@ -347,36 +337,25 @@ def main():
+         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.asan.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a.syms',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan.a.syms',
+         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.asan_static.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan_static.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan_static.a',
+ 
+         # AddressSanitizer C++ runtime.
+         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.asan_cxx.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan_cxx.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan_cxx.a.syms',
+-
+-        # AddressSanitizer Android runtime.
+-        'lib/clang/$V/lib/linux/libclang_rt.asan-aarch64-android.so',
+-        'lib/clang/$V/lib/linux/libclang_rt.asan-arm-android.so',
+-        'lib/clang/$V/lib/linux/libclang_rt.asan-i686-android.so',
+-        'lib/clang/$V/lib/linux/libclang_rt.asan-riscv64-android.so',
+-        'lib/clang/$V/lib/linux/libclang_rt.asan_static-aarch64-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.asan_static-arm-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.asan_static-i686-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.asan_static-riscv64-android.a',
+-
+-        # Builtins for Android.
+-        'lib/clang/$V/lib/linux/libclang_rt.builtins-aarch64-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.builtins-arm-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.builtins-i686-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.builtins-x86_64-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.builtins-riscv64-android.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan_cxx.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan_cxx.a.syms',
+ 
+         # Builtins for Linux and Lacros.
+         'lib/clang/$V/lib/aarch64-unknown-linux-gnu/libclang_rt.builtins.a',
+         'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/libclang_rt.builtins.a',
+         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.builtins.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.builtins.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.builtins.a',
+ 
+         # crtstart/crtend for Linux and Lacros.
+         'lib/clang/$V/lib/aarch64-unknown-linux-gnu/clang_rt.crtbegin.o',
+@@ -385,12 +364,8 @@ def main():
+         'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/clang_rt.crtend.o',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtbegin.o',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtend.o',
+-
+-        # HWASAN Android runtime.
+-        'lib/clang/$V/lib/linux/libclang_rt.hwasan-aarch64-android.so',
+-        'lib/clang/$V/lib/linux/libclang_rt.hwasan-preinit-aarch64-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.hwasan-riscv64-android.so',
+-        'lib/clang/$V/lib/linux/libclang_rt.hwasan-preinit-riscv64-android.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/clang_rt.crtbegin.o',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/clang_rt.crtend.o',
+ 
+         # MemorySanitizer C runtime (pure C won't link with *_cxx).
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.msan.a',
+@@ -405,34 +380,33 @@ def main():
+         'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/libclang_rt.profile.a',
+         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.profile.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.profile.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.profile-i686-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.profile-x86_64-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.profile-aarch64-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.profile-arm-android.a',
+-        'lib/clang/$V/lib/linux/libclang_rt.profile-riscv64-android.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.profile.a',
+ 
+         # ThreadSanitizer C runtime (pure C won't link with *_cxx).
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan.a.syms',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan.a.syms',
+ 
+         # ThreadSanitizer C++ runtime.
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan_cxx.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan_cxx.a.syms',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan_cxx.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan_cxx.a.syms',
+ 
+         # UndefinedBehaviorSanitizer C runtime (pure C won't link with *_cxx).
+         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a.syms',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a.syms',
+ 
+         # UndefinedBehaviorSanitizer C++ runtime.
+         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.ubsan_standalone_cxx.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone_cxx.a',
+         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone_cxx.a.syms',
+-
+-        # UndefinedBehaviorSanitizer Android runtime, needed for CFI.
+-        'lib/clang/$V/lib/linux/libclang_rt.ubsan_standalone-aarch64-android.so',
+-        'lib/clang/$V/lib/linux/libclang_rt.ubsan_standalone-arm-android.so',
+-        'lib/clang/$V/lib/linux/libclang_rt.ubsan_standalone-riscv64-android.so',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.ubsan_standalone_cxx.a',
++        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.ubsan_standalone_cxx.a.syms',
+ 
+         # Ignorelist for MemorySanitizer (used on Linux only).
+         'lib/clang/$V/share/msan_*list.txt',
+-- 
+2.39.2
+
