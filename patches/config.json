@@ -1,4 +1,6 @@
 [
+  { "patch_dir": "src/electron/patches/swiftshader", "repo": "src/third_party/swiftshader" },
+  { "patch_dir": "src/electron/patches/lss", "repo": "src/third_party/lss" },
   { "patch_dir": "src/electron/patches/chromium", "repo": "src" },
   { "patch_dir": "src/electron/patches/boringssl", "repo": "src/third_party/boringssl/src" },
   { "patch_dir": "src/electron/patches/devtools_frontend", "repo": "src/third_party/devtools-frontend/src" },
