@@ -1,0 +1,43 @@
+From 48c60e0d716044b334c78c072047a4b534951734 Mon Sep 17 00:00:00 2001
+From: Lu Yahan <yahan@iscas.ac.cn>
+Date: Mon, 9 Dec 2024 19:20:03 +0800
+Subject: [PATCH] [riscv] Flush icache in both local and remote harts
+
+Fix the I-Cache flush flag according to the implementation of flush_icache_mm in Linux kernel.
+
+
+Change-Id: I6e6b1f56c377c2c0a629e170737bfac6c357ce8d
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/6080611
+Commit-Queue: Yahan Lu (LuYahan) <yahan@iscas.ac.cn>
+Reviewed-by: Ji Qiu <qiuji@iscas.ac.cn>
+Cr-Commit-Position: refs/heads/main@{#97673}
+---
+ src/codegen/riscv/cpu-riscv.cc | 8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/src/codegen/riscv/cpu-riscv.cc b/src/codegen/riscv/cpu-riscv.cc
+index 613c54439a5..143602dfb66 100644
+--- a/src/codegen/riscv/cpu-riscv.cc
++++ b/src/codegen/riscv/cpu-riscv.cc
+@@ -15,16 +15,12 @@ namespace internal {
+ void CpuFeatures::FlushICache(void* start, size_t size) {
+ #if !defined(USE_SIMULATOR)
+   char* end = reinterpret_cast<char*>(start) + size;
+-  // The definition of this syscall is equal to
+-  // SYSCALL_DEFINE3(riscv_flush_icache, uintptr_t, start,
+-  //                 uintptr_t, end, uintptr_t, flags)
+-  // The flag here is set to be SYS_RISCV_FLUSH_ICACHE_LOCAL, which is
+-  // defined as 1 in the Linux kernel.
+   // SYS_riscv_flush_icache is a symbolic constant used in user-space code to
+   // identify the flush_icache system call, while __NR_riscv_flush_icache is the
+   // corresponding system call number used in the kernel to dispatch the system
+   // call.
+-  syscall(__NR_riscv_flush_icache, start, end, 1);
++  // The flag set to zero will flush all cpu cores.
++  syscall(__NR_riscv_flush_icache, start, end, 0);
+ #endif  // !USE_SIMULATOR.
+ }
+ 
+-- 
+2.47.1
+
