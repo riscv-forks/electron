@@ -1,0 +1,35 @@
+From 758ce81564775835d15b313c8ca6d8c2f22fe564 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Thu, 1 Feb 2024 08:56:49 +0800
+Subject: [PATCH] Fix compiler error on riscv64
+
+Fixes the following error when cross compiling for riscv64:
+
+../../third_party/lss/linux_syscall_support.h:3638:51: error: implicit conversion changes signedness: 'int' to 'uint64_t' (aka 'unsigned long') [-Werror,-Wsign-conversion]
+ 3638 |         register uint64_t __flags __asm__("a0") = flags;
+      |                           ~~~~~~~                 ^~~~~
+1 error generated.
+
+Change-Id: I61b3113c94eae71ed376cc691011a4773d783a59
+Reviewed-on: https://chromium-review.googlesource.com/c/linux-syscall-support/+/5239652
+Reviewed-by: Mike Frysinger <vapier@chromium.org>
+---
+ linux_syscall_support.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/linux_syscall_support.h b/linux_syscall_support.h
+index 99a4b44..72135da 100644
+--- a/linux_syscall_support.h
++++ b/linux_syscall_support.h
+@@ -3635,7 +3635,7 @@ struct kernel_statx {
+       int64_t __res;
+       {
+         register int64_t __res_a0 __asm__("a0");
+-        register uint64_t __flags __asm__("a0") = flags;
++        register uint64_t __flags __asm__("a0") = (uint64_t)flags;
+         register void *__stack __asm__("a1") = child_stack;
+         register void *__ptid  __asm__("a2") = parent_tidptr;
+         register void *__tls   __asm__("a3") = newtls;
+-- 
+2.43.0
+
