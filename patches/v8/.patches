@@ -3,3 +3,5 @@ deps_add_v8_object_setinternalfieldfornodecore.patch
 fix_disable_scope_reuse_associated_dchecks.patch
 fix_compiler_failure_on_older_clang.patch
 cherry-pick-3c2d220ad025.patch
+0001-supress-Wunused-function-in-riscv-assembler-riscv.cc.patch
+0001-LiftoffAssembler-f16x8-fixup.patch
