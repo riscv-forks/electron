@@ -68,6 +68,8 @@ bool ElectronRuntimeAPIDelegate::GetPlatformInfo(PlatformInfo* info) {
     info->arch = extensions::api::runtime::PlatformArch::kX86_32;
   } else if (arch == "x64") {
     info->arch = extensions::api::runtime::PlatformArch::kX86_64;
+  } else if (strcmp(arch, "riscv64") == 0) {
+    info->arch = extensions::api::runtime::PlatformArch::kRiscv64;
   } else {
     NOTREACHED();
   }
@@ -80,6 +82,8 @@ bool ElectronRuntimeAPIDelegate::GetPlatformInfo(PlatformInfo* info) {
     info->nacl_arch = extensions::api::runtime::PlatformNaclArch::kX86_32;
   } else if (nacl_arch == "x86-64") {
     info->nacl_arch = extensions::api::runtime::PlatformNaclArch::kX86_64;
+  } else if (strcmp(nacl_arch, "riscv64") == 0) {
+    info->nacl_arch = extensions::api::runtime::PlatformNaclArch::kRiscv64;
   } else {
     NOTREACHED();
   }
