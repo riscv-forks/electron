@@ -17,3 +17,5 @@ merged_reland_lower_the_maximum_js_parameter_count.patch
 cherry-pick-9209292e7898.patch
 cherry-pick-97e828af5cbc.patch
 cherry-pick-ca504d096c39.patch
+0001-supress-Wunused-function-in-riscv-assembler-riscv.cc.patch
+0001-LiftoffAssembler-f16x8-fixup.patch
