@@ -1,3 +1,12 @@
+0001-clang-add-riscv64-support-to-package-script.patch
+0001-extensions-common-api-runtime.json-riscv64-support.patch
+0002-Add-support-for-riscv64-linux.patch
+0004-installer-add-riscv64-support.patch
+0005-Fix-Rust-target-triple-for-riscv64.patch
+0006-abseil-cpp-fix-signedness-conversion.patch
+0007-clang-toolchain-riscv64-support.patch
+0008-sysroot-riscv64-support.patch
+0001-media-ffmpeg-add-riscv64-support.patch
 build_gn.patch
 accelerator.patch
 blink_file_path.patch
