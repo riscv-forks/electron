@@ -19,3 +19,5 @@ cherry-pick-aad648bd2af9.patch
 merged_wasm_arm_tail-call_free_scratch_register_earlier.patch
 merged_turboshaft_wasm_wasmgctypeanalyzer_fix_phi_input_for.patch
 merged_turboshaft_wasm_wasmgctypeanalyzer_fix_single-block_loops.patch
+avoid-cpu-probing-in-li_ptr.patch
+0001-supress-Wunused-function-in-riscv-assembler-riscv.cc.patch
