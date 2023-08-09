@@ -8,3 +8,5 @@ cherry-pick-9209292e7898.patch
 cherry-pick-97e828af5cbc.patch
 cherry-pick-ca504d096c39.patch
 cherry-pick-8131c09bc129.patch
+0001-supress-Wunused-function-in-riscv-assembler-riscv.cc.patch
+0001-LiftoffAssembler-f16x8-fixup.patch
