@@ -1,0 +1,35 @@
+From 6ebca54e1555c29e7b82b39d9d6035c5f767e0eb Mon Sep 17 00:00:00 2001
+From: Levi Zim <rsworktech@outlook.com>
+Date: Mon, 19 Aug 2024 16:18:33 +0200
+Subject: [PATCH] Fix errors in libavutil
+
+Not actually errors. These warnings are considered as errors.
+---
+ libavutil/riscv/cpu.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/libavutil/riscv/cpu.c b/libavutil/riscv/cpu.c
+index 73abd289a6..35b0b3341a 100644
+--- a/libavutil/riscv/cpu.c
++++ b/libavutil/riscv/cpu.c
+@@ -18,7 +18,9 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+  */
+ 
++#ifndef _GNU_SOURCE
+ #define _GNU_SOURCE
++#endif
+ #include "libavutil/cpu.h"
+ #include "libavutil/cpu_internal.h"
+ #include "libavutil/macros.h"
+@@ -82,6 +84,7 @@ int ff_get_cpu_flags_riscv(void)
+                 ret |= AV_CPU_FLAG_RV_MISALIGNED;
+                 break;
+             default:
++		; /* fallthrough */
+         }
+     } else
+ #endif
+-- 
+2.45.2
+
