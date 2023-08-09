@@ -47,6 +47,8 @@ if (electron_js2c_toolchain == "") {
       }
     } else if (current_cpu == "arm") {
       _cpus = "x86_v8_${current_cpu}"
+    } else if (current_cpu == "riscv64") {
+      _cpus = "x64_v8_${current_cpu}"
     } else {
       # This branch should not be reached; leave _cpus blank so the assert
       # below will fail.
