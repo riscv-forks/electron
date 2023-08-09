@@ -1,0 +1,34 @@
+From 31a29e0592f4c1eb5798c37afbca6e1956325afe Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sat, 10 Feb 2024 08:41:55 +0800
+Subject: [PATCH 6/8] abseil-cpp: fix signedness conversion
+
+---
+ .../absl/debugging/internal/stacktrace_riscv-inl.inc          | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/third_party/abseil-cpp/absl/debugging/internal/stacktrace_riscv-inl.inc b/third_party/abseil-cpp/absl/debugging/internal/stacktrace_riscv-inl.inc
+index 20183fa3213b0..850d3fe73bb40 100644
+--- a/third_party/abseil-cpp/absl/debugging/internal/stacktrace_riscv-inl.inc
++++ b/third_party/abseil-cpp/absl/debugging/internal/stacktrace_riscv-inl.inc
+@@ -44,7 +44,7 @@ template <typename T>
+ static inline uintptr_t ComputeStackFrameSize(const T *low, const T *high) {
+   const char *low_char_ptr = reinterpret_cast<const char *>(low);
+   const char *high_char_ptr = reinterpret_cast<const char *>(high);
+-  return low < high ? high_char_ptr - low_char_ptr : kUnknownFrameSize;
++  return low < high ? (uintptr_t)(high_char_ptr - low_char_ptr) : kUnknownFrameSize;
+ }
+ 
+ // Given a pointer to a stack frame, locate and return the calling stackframe,
+@@ -151,7 +151,7 @@ static int UnwindImpl(void **result, int *sizes, int max_depth, int skip_count,
+     } else {
+       result[n] = return_address;
+       if (IS_STACK_FRAMES) {
+-        sizes[n] = ComputeStackFrameSize(frame_pointer, next_frame_pointer);
++        sizes[n] = (int)ComputeStackFrameSize(frame_pointer, next_frame_pointer);
+       }
+       n++;
+     }
+-- 
+2.43.0
+
