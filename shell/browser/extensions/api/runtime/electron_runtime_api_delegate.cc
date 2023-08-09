@@ -68,6 +68,8 @@ bool ElectronRuntimeAPIDelegate::GetPlatformInfo(PlatformInfo* info) {
     info->arch = extensions::api::runtime::PlatformArch::kX86_32;
   } else if (arch == "x64") {
     info->arch = extensions::api::runtime::PlatformArch::kX86_64;
+  } else if (arch == "riscv64") {
+    info->arch = extensions::api::runtime::PlatformArch::kRiscv64;
   } else {
     NOTREACHED();
   }
