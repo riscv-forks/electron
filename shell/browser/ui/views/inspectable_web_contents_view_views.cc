@@ -132,7 +132,7 @@ void InspectableWebContentsViewViews::ShowDevTools(bool activate) {
     devtools_web_view_->SetWebContents(
         inspectable_web_contents_->GetDevToolsWebContents());
     devtools_web_view_->RequestFocus();
-    Layout();
+    DeprecatedLayoutImmediately();
   }
 }
 
@@ -153,7 +153,7 @@ void InspectableWebContentsViewViews::CloseDevTools() {
   } else {
     devtools_web_view_->SetVisible(false);
     devtools_web_view_->SetWebContents(nullptr);
-    Layout();
+    DeprecatedLayoutImmediately();
   }
 }
 
@@ -202,7 +202,7 @@ void InspectableWebContentsViewViews::SetIsDocked(bool docked, bool activate) {
 void InspectableWebContentsViewViews::SetContentsResizingStrategy(
     const DevToolsContentsResizingStrategy& strategy) {
   strategy_.CopyFrom(strategy);
-  Layout();
+  DeprecatedLayoutImmediately();
 }
 
 void InspectableWebContentsViewViews::SetTitle(const std::u16string& title) {
@@ -216,11 +216,11 @@ const std::u16string InspectableWebContentsViewViews::GetTitle() {
   return title_;
 }
 
-void InspectableWebContentsViewViews::Layout() {
+void InspectableWebContentsViewViews::Layout(PassKey) {
   if (!devtools_web_view_->GetVisible()) {
     contents_web_view_->SetBoundsRect(GetContentsBounds());
     // Propagate layout call to all children, for example browser views.
-    View::Layout();
+    LayoutSuperclass<View>(this);
     return;
   }
 
@@ -239,7 +239,7 @@ void InspectableWebContentsViewViews::Layout() {
   contents_web_view_->SetBoundsRect(new_contents_bounds);
 
   // Propagate layout call to all children, for example browser views.
-  View::Layout();
+  LayoutSuperclass<View>(this);
 
   if (GetDelegate())
     GetDelegate()->DevToolsResized();
