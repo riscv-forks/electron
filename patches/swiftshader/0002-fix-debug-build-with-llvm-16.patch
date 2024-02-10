@@ -1,0 +1,108 @@
+From 6f9db931d089ae4d6f7d3e827deea0cd74353a42 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Thu, 1 Feb 2024 16:35:04 +0800
+Subject: [PATCH 2/3] fix debug build with llvm 16
+
+More source files are needed when building swiftshader_reactor_llvm_unittests
+in debug mode.
+
+Fix https://ci.chromium.org/ui/p/chromium/builders/try/linux_chromium_compile_dbg_ng/1886655/overview
+Change-Id: I40aa51880bf72b3e562575e184d98e8f12e88dd6
+---
+ third_party/llvm-16.0/Android.bp                      |  1 +
+ third_party/llvm-16.0/BUILD.gn                        | 11 +++++++++++
+ third_party/llvm-16.0/scripts/generate_build_files.py |  2 ++
+ third_party/llvm-16.0/scripts/template_BUILD.gn       | 10 ++++++++++
+ 4 files changed, 24 insertions(+)
+
+diff --git a/third_party/llvm-16.0/Android.bp b/third_party/llvm-16.0/Android.bp
+index b2832f8c2..02c015c48 100644
+--- a/third_party/llvm-16.0/Android.bp
++++ b/third_party/llvm-16.0/Android.bp
+@@ -1533,5 +1533,6 @@ cc_library_static {
+ 
+     srcs: [
+         "llvm/lib/Analysis/RegionPrinter.cpp",
++        "llvm/lib/MC/MCDisassembler/MCDisassembler.cpp",
+     ],
+ }
+diff --git a/third_party/llvm-16.0/BUILD.gn b/third_party/llvm-16.0/BUILD.gn
+index 13f5cc365..f5bde4040 100644
+--- a/third_party/llvm-16.0/BUILD.gn
++++ b/third_party/llvm-16.0/BUILD.gn
+@@ -158,6 +158,10 @@ swiftshader_llvm_source_set("swiftshader_llvm") {
+ 
+   ]
+ 
++  if (is_debug) {
++    deps += [ ":swiftshader_llvm_debug" ]
++  }
++
+   if (current_cpu == "arm64") {
+     deps += [ ":swiftshader_llvm_aarch64" ]
+   } else if (current_cpu == "arm") {
+@@ -1270,6 +1274,13 @@ swiftshader_llvm_source_set("swiftshader_llvm_source_set_1") {
+ }
+ 
+ 
++swiftshader_llvm_source_set("swiftshader_llvm_debug") {
++  sources = [
++    "llvm/lib/Analysis/RegionPrinter.cpp",
++    "llvm/lib/MC/MCDisassembler/MCDisassembler.cpp",
++  ]
++}
++
+ swiftshader_llvm_source_set("swiftshader_llvm_aarch64") {
+   sources = [
+     "llvm/lib/CodeGen/MultiHazardRecognizer.cpp",
+diff --git a/third_party/llvm-16.0/scripts/generate_build_files.py b/third_party/llvm-16.0/scripts/generate_build_files.py
+index f6690a670..2e4dc7398 100755
+--- a/third_party/llvm-16.0/scripts/generate_build_files.py
++++ b/third_party/llvm-16.0/scripts/generate_build_files.py
+@@ -361,6 +361,7 @@ files_llvm.extend(files_to_add_back_for_llvm)
+ 
+ files_llvm_debug = [
+     "/lib/Analysis/RegionPrinter.cpp",
++    "/lib/MC/MCDisassembler/MCDisassembler.cpp",
+ ]
+ 
+ files_to_add_back_for_llvm_arm = [
+@@ -496,6 +497,7 @@ build_gn_template_data = {
+     'files_Mips' : format_file_list_for_build_gn(files_Mips),
+     'files_PowerPC' : format_file_list_for_build_gn(files_PowerPC),
+     'files_RISCV' : format_file_list_for_build_gn(files_RISCV),
++    'files_llvm_debug': format_file_list_for_build_gn(files_llvm_debug),
+ }
+ with open(BUILD_GN_TEMPLATE_PATH, 'r') as f:
+     build_gn_template = CustomTemplate(f.read())
+diff --git a/third_party/llvm-16.0/scripts/template_BUILD.gn b/third_party/llvm-16.0/scripts/template_BUILD.gn
+index 72c21f5dd..313147085 100644
+--- a/third_party/llvm-16.0/scripts/template_BUILD.gn
++++ b/third_party/llvm-16.0/scripts/template_BUILD.gn
+@@ -156,6 +156,10 @@ swiftshader_llvm_source_set("swiftshader_llvm") {
+ %$%llvm_deps
+   ]
+ 
++  if (is_debug) {
++    deps += [ ":swiftshader_llvm_debug" ]
++  }
++
+   if (current_cpu == "arm64") {
+     deps += [ ":swiftshader_llvm_aarch64" ]
+   } else if (current_cpu == "arm") {
+@@ -186,6 +190,12 @@ swiftshader_llvm_source_set("swiftshader_llvm") {
+ # split out into their own source_set.
+ %$%llvm_source_sets
+ 
++swiftshader_llvm_source_set("swiftshader_llvm_debug") {
++  sources = [
++%$%files_llvm_debug
++  ]
++}
++
+ swiftshader_llvm_source_set("swiftshader_llvm_aarch64") {
+   sources = [
+ %$%files_AArch64
+-- 
+2.43.0
+
