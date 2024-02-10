@@ -1,0 +1,44 @@
+From 88d74fcb23f89eae09f348873222ce545dbb4aa3 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sat, 10 Feb 2024 10:31:01 +0800
+Subject: [PATCH] rust toolchain: fix float target-abi for riscv64
+
+---
+ tools/rust/build_rust.py | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
+diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
+index 82273eb104cbb..87304862d26d2 100755
+--- a/tools/rust/build_rust.py
++++ b/tools/rust/build_rust.py
+@@ -609,6 +609,10 @@ def GitApplyCherryPicks():
+     GitCherryPick(RUST_SRC_DIR, 'https://github.com/rust-lang/rust.git',
+                   '14947b410ad23a09251180af50486e247f70b465')
+ 
++    # Fix chromium linking for riscv64
++    GitCherryPick(RUST_SRC_DIR, 'https://github.com/kxxt/rust.git',
++                  '6ec00d6675546438db0f947598935621d4ff885f')
++
+     print('Finished applying cherry-picks.')
+ 
+ 
+@@ -669,11 +673,11 @@ def main():
+     args, rest = parser.parse_known_args()
+ 
+     debian_sysroot = None
+-    if sys.platform.startswith('linux') and not args.sync_for_gnrt:
+-        # Fetch sysroot we build rustc against. This ensures a minimum supported
+-        # host (not Chromium target). Since the rustc linux package is for
+-        # x86_64 only, that is the sole needed sysroot.
+-        debian_sysroot = DownloadDebianSysroot('amd64')
++    # if sys.platform.startswith('linux') and not args.sync_for_gnrt:
++    #     # Fetch sysroot we build rustc against. This ensures a minimum supported
++    #     # host (not Chromium target). Since the rustc linux package is for
++    #     # x86_64 only, that is the sole needed sysroot.
++    #     debian_sysroot = DownloadDebianSysroot('amd64')
+ 
+     # Require zlib compression.
+     if sys.platform == 'win32':
+-- 
+2.43.0
+
