@@ -1,0 +1,29 @@
+From 899ce81a61d7580dca89184a49182a7c8f601ab1 Mon Sep 17 00:00:00 2001
+From: Eric Long <i@hack3r.moe>
+Date: Sun, 28 Jan 2024 17:41:06 +0800
+Subject: [PATCH 5/8] Fix Rust target triple for riscv64
+
+Rust target triple for riscv64 is riscv64gc-unknown-linux-gnu rather
+than Clang's riscv64-unknown-linux-gnu.
+
+Change-Id: I2f19101bd654f2f71392a65ce619c30570cdea49
+---
+ build/config/rust.gni | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/build/config/rust.gni b/build/config/rust.gni
+index 814c455c5395f..47f4a4899b5f6 100644
+--- a/build/config/rust.gni
++++ b/build/config/rust.gni
+@@ -203,6 +203,8 @@ if (is_linux || is_chromeos) {
+     } else {
+       rust_abi_target = "arm-unknown-linux-gnueabi" + float_suffix
+     }
++  } else if (current_cpu == "riscv64") {
++    rust_abi_target = "riscv64gc-unknown-linux-gnu"
+   } else {
+     # Best guess for other future platforms.
+     rust_abi_target = current_cpu + "-unknown-linux-gnu"
+-- 
+2.43.0
+
