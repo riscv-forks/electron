@@ -1,0 +1,71 @@
+From 074033033ae526b8544110ace455a28d2e76ae2c Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Thu, 1 Feb 2024 17:38:17 +0800
+Subject: [PATCH 3/3] split source files with the same case-insensentive name
+ into different source sets
+
+Avoids mapping llvm/lib/DebugInfo/DWARF/DWARFCompileUnit.cpp and
+llvm/lib/CodeGen/AsmPrinter/DwarfCompileUnit.cpp to the same object file
+on a case-insensitive file system.
+
+Might fix https://logs.chromium.org/logs/chromium/buildbucket/cr-buildbucket/8757315701829357889/+/u/compile__with_patch_/raw_io.output_text_failure_summary_
+
+Change-Id: I4595c69993bd9accb7496f67044ccae6201e0343
+---
+ third_party/llvm-16.0/BUILD.gn                        | 6 +++---
+ third_party/llvm-16.0/scripts/generate_build_files.py | 3 ++-
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/third_party/llvm-16.0/BUILD.gn b/third_party/llvm-16.0/BUILD.gn
+index f5bde4040..c6bd34bae 100644
+--- a/third_party/llvm-16.0/BUILD.gn
++++ b/third_party/llvm-16.0/BUILD.gn
+@@ -617,7 +617,6 @@ swiftshader_llvm_source_set("swiftshader_llvm_source_set_0") {
+     "llvm/lib/DebugInfo/DWARF/DWARFAbbreviationDeclaration.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFAcceleratorTable.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFAddressRange.cpp",
+-    "llvm/lib/DebugInfo/DWARF/DWARFCompileUnit.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFContext.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFDataExtractor.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFDebugAbbrev.cpp",
+@@ -633,13 +632,11 @@ swiftshader_llvm_source_set("swiftshader_llvm_source_set_0") {
+     "llvm/lib/DebugInfo/DWARF/DWARFDebugRangeList.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFDebugRnglists.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFDie.cpp",
+-    "llvm/lib/DebugInfo/DWARF/DWARFExpression.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFFormValue.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFGdbIndex.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFListTable.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFTypePrinter.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFTypeUnit.cpp",
+-    "llvm/lib/DebugInfo/DWARF/DWARFUnit.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFUnitIndex.cpp",
+     "llvm/lib/DebugInfo/DWARF/DWARFVerifier.cpp",
+     "llvm/lib/Demangle/DLangDemangle.cpp",
+@@ -1260,6 +1257,9 @@ swiftshader_llvm_source_set("swiftshader_llvm_source_set_0") {
+ }
+ swiftshader_llvm_source_set("swiftshader_llvm_source_set_1") {
+   sources = [
++    "llvm/lib/DebugInfo/DWARF/DWARFCompileUnit.cpp",
++    "llvm/lib/DebugInfo/DWARF/DWARFExpression.cpp",
++    "llvm/lib/DebugInfo/DWARF/DWARFUnit.cpp",
+     "llvm/lib/ExecutionEngine/JITLink/COFF.cpp",
+     "llvm/lib/ExecutionEngine/JITLink/MachO.cpp",
+     "llvm/lib/IRPrinter/IRPrintingPasses.cpp",
+diff --git a/third_party/llvm-16.0/scripts/generate_build_files.py b/third_party/llvm-16.0/scripts/generate_build_files.py
+index 2e4dc7398..63dae3ecd 100755
+--- a/third_party/llvm-16.0/scripts/generate_build_files.py
++++ b/third_party/llvm-16.0/scripts/generate_build_files.py
+@@ -447,7 +447,8 @@ def get_filename(path):
+ def partition_paths(filepaths):
+     partitions = []
+     for path in filepaths:
+-        filename = get_filename(path)
++        # Convert to lower case to support case-insensitive filesystem
++        filename = get_filename(path).lower()
+         inserted = False
+         for partition in partitions:
+             if not filename in partition:
+-- 
+2.43.0
+
