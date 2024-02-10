@@ -1,0 +1,43 @@
+From 068fcb3c9a61283a049a20a1d6c4fe7b271e88cd Mon Sep 17 00:00:00 2001
+From: Levi Zim <rsworktech@outlook.com>
+Date: Sun, 28 Jan 2024 09:08:09 +0800
+Subject: [PATCH 1/3] Default to use llvm16
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Fix the following error when compiling chromium targeting riscv64 using llvm 10
+
+../../third_party/swiftshader/src/Reactor/LLVMJIT.cpp:796:83: error: no member named 'Create' in 'llvm::jitlink::InProcessMemoryManager'
+  796 |             , objectLayer(session, llvm::cantFail(llvm::jitlink::InProcessMemoryManager::Create()))
+      |                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+1 error generated
+
+Change-Id: Ideb0c987dad35ca06b247e18ded6398f313921de
+Reviewed-on: https://swiftshader-review.googlesource.com/c/SwiftShader/+/73008
+Commit-Queue: Shahbaz Youssefi <syoussefi@google.com>
+Kokoro-Result: kokoro <noreply+kokoro@google.com>
+Reviewed-by: Shahbaz Youssefi <syoussefi@google.com>
+Presubmit-Ready: Shahbaz Youssefi <syoussefi@google.com>
+Tested-by: Shahbaz Youssefi <syoussefi@google.com>
+Reviewed-by: Alexis Hétu <sugoi@google.com>
+---
+ src/Reactor/BUILD.gn | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Reactor/BUILD.gn b/src/Reactor/BUILD.gn
+index 67dfeb0ec..dcb13614a 100644
+--- a/src/Reactor/BUILD.gn
++++ b/src/Reactor/BUILD.gn
+@@ -307,7 +307,7 @@ if (supports_subzero) {
+ 
+ if (supports_llvm) {
+   swiftshader_source_set("swiftshader_llvm_reactor") {
+-    llvm_dir = "../../third_party/llvm-10.0"
++    llvm_dir = "../../third_party/llvm-16.0"
+ 
+     deps = [
+       ":swiftshader_reactor_base",
+-- 
+2.43.0
+
