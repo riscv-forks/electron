@@ -1,0 +1,51 @@
+From 99890627743f2d20bd7b5793db01abef6338fbd5 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sat, 10 Feb 2024 12:55:08 +0100
+Subject: [PATCH] rust toolchain: fix float target-abi for riscv64
+
+---
+ tools/rust/build_rust.py | 21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
+
+diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
+index f10dc3f56bdf9..9265297afc3c8 100755
+--- a/tools/rust/build_rust.py
++++ b/tools/rust/build_rust.py
+@@ -687,11 +687,11 @@ def main():
+         return 1
+ 
+     debian_sysroot = None
+-    if sys.platform.startswith('linux') and not args.sync_for_gnrt:
+-        # Fetch sysroot we build rustc against. This ensures a minimum supported
+-        # host (not Chromium target). Since the rustc linux package is for
+-        # x86_64 only, that is the sole needed sysroot.
+-        debian_sysroot = DownloadDebianSysroot('amd64')
++    # if sys.platform.startswith('linux') and not args.sync_for_gnrt:
++    #     # Fetch sysroot we build rustc against. This ensures a minimum supported
++    #     # host (not Chromium target). Since the rustc linux package is for
++    #     # x86_64 only, that is the sole needed sysroot.
++    #     debian_sysroot = DownloadDebianSysroot('amd64')
+ 
+     # Require zlib compression.
+     if sys.platform == 'win32':
+@@ -760,6 +760,17 @@ def main():
+             '046503e6f4318aaba649e51becc38b1db9c87ee7'
+         ])
+         GitCherryPick(RUST_SRC_DIR, '046503e6f4318aaba649e51becc38b1db9c87ee7')
++        RunCommand([
++            'git', '-C', RUST_SRC_DIR, 'remote', 'add', 'kxxt',
++            'https://github.com/kxxt/rust.git'
++        ],
++                   fail_hard=False)
++        RunCommand([
++            'git', '-C', RUST_SRC_DIR, 'fetch', 'kxxt',
++                      '4cf823be86b86604727e82c79d156a44f6ead569'
++        ])
++        GitCherryPick(RUST_SRC_DIR,
++                      '4cf823be86b86604727e82c79d156a44f6ead569')
+ 
+         path = FetchBetaPackage('cargo', checkout_revision)
+         if sys.platform == 'win32':
+-- 
+2.39.2
+
