@@ -1,3 +1,15 @@
+0001-Work-around-GN-false-positive-unused-variable-error.patch
+0001-clang-add-riscv64-support-to-package-script.patch
+0001-rust-toolchain-fix-float-target-abi-for-riscv64.patch
+0001-extensions-common-api-runtime.json-riscv64-support.patch
+0001-disable-cpuinfo-build-for-riscv64.patch
+0002-Add-support-for-riscv64-linux.patch
+0003-compiler-specific.h-only-enable-preserve_most-for-su.patch
+0004-installer-add-riscv64-support.patch
+0005-Fix-Rust-target-triple-for-riscv64.patch
+0006-abseil-cpp-fix-signedness-conversion.patch
+0007-clang-toolchain-riscv64-support.patch
+0008-sysroot-riscv64-support.patch
 build_gn.patch
 dcheck.patch
 accelerator.patch
