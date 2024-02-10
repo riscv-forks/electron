@@ -1,0 +1,75 @@
+From 8442abcdaeb879bea7c3b662b22ec2315066e54b Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sat, 10 Feb 2024 09:19:00 +0800
+Subject: [PATCH 7/8] clang toolchain: riscv64 support
+
+---
+ build/config/clang/BUILD.gn  |  2 ++
+ tools/clang/scripts/build.py | 21 ++++++++++++++++++++-
+ 2 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/build/config/clang/BUILD.gn b/build/config/clang/BUILD.gn
+index d4de2e0cca071..83cf1a448ddce 100644
+--- a/build/config/clang/BUILD.gn
++++ b/build/config/clang/BUILD.gn
+@@ -136,6 +136,8 @@ template("clang_lib") {
+           _dir = "armv7-unknown-linux-gnueabihf"
+         } else if (current_cpu == "arm64") {
+           _dir = "aarch64-unknown-linux-gnu"
++        } else if (current_cpu == "riscv64") {
++          _dir = "riscv64-unknown-linux-gnu"
+         } else {
+           assert(false)  # Unhandled cpu type
+         }
+diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
+index 880407b491b69..0eadfe603148f 100755
+--- a/tools/clang/scripts/build.py
++++ b/tools/clang/scripts/build.py
+@@ -596,10 +596,17 @@ def DownloadDebianSysroot(platform_name):
+       'arm': '0b9a3c54d2d5f6b1a428369aaa8d7ba7b227f701',
+       # hash from https://chromium-review.googlesource.com/c/chromium/src/+/3684954/1/build/linux/sysroot_scripts/sysroots.json#12
+       'arm64': '0e28d9832614729bb5b731161ff96cb4d516f345',
++      'riscv64': 'SKIP',
+   }
+ 
+-  toolchain_name = f'debian_bullseye_{platform_name}_sysroot'
++  release = 'bullseye' if platform_name != 'riscv64' else 'sid'
++
++  toolchain_name = f'debian_{release}_{platform_name}_sysroot'
+   output = os.path.join(LLVM_BUILD_TOOLS_DIR, toolchain_name)
++
++  if hashes[platform_name] == 'SKIP':
++    return output
++
+   U = toolchain_bucket + hashes[platform_name] + '/' + toolchain_name + \
+       '.tar.xz'
+   DownloadAndUnpack(U, output)
+@@ -896,6 +903,7 @@ def main():
+     sysroot_i386 = DownloadDebianSysroot('i386')
+     sysroot_arm = DownloadDebianSysroot('arm')
+     sysroot_arm64 = DownloadDebianSysroot('arm64')
++    sysroot_riscv64 = DownloadDebianSysroot('riscv64')
+ 
+     # Add the sysroot to base_cmake_args.
+     if platform.machine() == 'aarch64':
+@@ -1222,6 +1230,17 @@ def main():
+         "sanitizers":
+         True,
+     }
++    runtimes_triples_args['riscv64-unknown-linux-gnu'] = {
++        "args": [
++            'CMAKE_SYSROOT=%s' % sysroot_riscv64,
++            # Can't run tests on x86 host.
++            'LLVM_INCLUDE_TESTS=OFF',
++        ],
++        "profile":
++        True,
++        "sanitizers":
++        True,
++    }
+   elif sys.platform == 'win32':
+     sysroot = os.path.dirname(os.path.dirname(GetWinSDKDir()))
+     runtimes_triples_args['i386-pc-windows-msvc'] = {
+-- 
+2.43.0
+
