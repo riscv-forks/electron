@@ -49,21 +49,30 @@ jobs:
         diff -w -B appveyor.yml appveyor2.yml > appveyor.diff || true
         patch -f appveyor.yml < appveyor.diff
         rm appveyor2.yml appveyor.diff
+        git add appveyor.yml
     - name: (Optionally) Generate Commit Diff for WOA
       if: ${{ env.APPVEYOR_IMAGE_VERSION }}
       run: |
         diff -w -B appveyor-woa.yml appveyor-woa2.yml > appveyor-woa.diff || true
         patch -f appveyor-woa.yml < appveyor-woa.diff
         rm appveyor-woa2.yml appveyor-woa.diff
-    - name: (Optionally) Commit and Pull Request
+        git add appveyor-woa.yml
+    - name: (Optionally) Commit to Branch
+      if: ${{ env.APPVEYOR_IMAGE_VERSION }}
+      uses: dsanders11/github-app-commit-action@1dd0a2d22c564461d3f598b6858856e8842d7a16 # v1.1.0
+      with:
+        message: 'build: update appveyor image to latest version'
+        ref: bump-appveyor-image
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: (Optionally) Switch to Branch
+      run: |
+        git fetch
+        git switch bump-appveyor-image
+    - name: (Optionally) Create Pull Request
       if: ${{ env.APPVEYOR_IMAGE_VERSION }}
       uses: peter-evans/create-pull-request@b1ddad2c994a25fbc81a28b3ec0e368bb2021c50 # v6.0.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: 'build: update appveyor image to latest version'
-        committer: GitHub <noreply@github.com>
-        author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
-        signoff: false
         branch: bump-appveyor-image
         delete-branch: true
         reviewers: electron/wg-releases
