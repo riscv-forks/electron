@@ -65,6 +65,7 @@ jobs:
         ref: bump-appveyor-image
         token: ${{ secrets.GITHUB_TOKEN }}
     - name: (Optionally) Switch to Branch
+      if: ${{ env.APPVEYOR_IMAGE_VERSION }}
       run: |
         git fetch
         git switch bump-appveyor-image
