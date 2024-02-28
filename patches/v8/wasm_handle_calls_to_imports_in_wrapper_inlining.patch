@@ -1,7 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Andreas Haas <ahaas@chromium.org>
 Date: Thu, 9 Nov 2023 14:12:27 +0100
-Subject: [wasm] Handle calls to imports in wrapper inlining
+Subject: Handle calls to imports in wrapper inlining
 
 The js-to-wasm wrapper inlining assumed that the called wasm function is
 not an imported function. This CL fixes this incorrect assumption.
