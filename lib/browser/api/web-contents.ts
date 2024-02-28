@@ -264,11 +264,11 @@ WebContents.prototype.printToPDF = async function (options) {
 // TODO(codebytere): deduplicate argument sanitization by moving rest of
 // print param logic into new file shared between printToPDF and print
 WebContents.prototype.print = function (options: ElectronInternal.WebContentsPrintOptions, callback) {
-  if (typeof options !== 'object') {
+  if (typeof options !== 'object' || options == null) {
     throw new TypeError('webContents.print(): Invalid print settings specified.');
   }
 
-  const printSettings: Record<string, any> = { ...options };
+  const printSettings: Record<string, any> = { ...options ?? {} };
 
   const pageSize = options.pageSize ?? 'A4';
   if (typeof pageSize === 'object') {
