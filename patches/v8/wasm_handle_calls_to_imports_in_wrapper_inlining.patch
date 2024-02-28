@@ -1,0 +1,136 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Andreas Haas <ahaas@chromium.org>
+Date: Thu, 9 Nov 2023 14:12:27 +0100
+Subject: [wasm] Handle calls to imports in wrapper inlining
+
+The js-to-wasm wrapper inlining assumed that the called wasm function is
+not an imported function. This CL fixes this incorrect assumption.
+
+Additionally this CL changes the creation of WasmInternalFunctions to
+set a call_target only for not-imported functions. The reason is that at
+wrapper tier-up the call_target cannot be updated. The inconsistency,
+that the call_target is set before wrapper tier-up but not after wrapper
+tier-up, was hiding the referenced bug. This CL removes this
+inconsistency.
+
+Bug: chromium:1493747
+Change-Id: I2ce3d2f80588c978d1d6adbb6fa457a34f5b6e0e
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/5016842
+Reviewed-by: Matthias Liedtke <mliedtke@chromium.org>
+Commit-Queue: Andreas Haas <ahaas@chromium.org>
+Cr-Commit-Position: refs/heads/main@{#90849}
+
+diff --git a/src/compiler/js-inlining.cc b/src/compiler/js-inlining.cc
+index fe5de4937cb19a7f1931278936d5bdcf73aed7b9..51a6ac71fb5d7095d48b645c829f0eaac9dd66a1 100644
+--- a/src/compiler/js-inlining.cc
++++ b/src/compiler/js-inlining.cc
+@@ -497,9 +497,11 @@ Reduction JSInliner::ReduceJSWasmCall(Node* node) {
+ 
+     bool set_in_wasm_flag = !inline_result.can_inline_body;
+     BuildInlinedJSToWasmWrapper(
+-        graph()->zone(), jsgraph(), sig, wasm_call_params.module(), isolate(),
+-        source_positions_, wasm::WasmFeatures::FromFlags(),
+-        continuation_frame_state, set_in_wasm_flag);
++        graph()->zone(), jsgraph(), sig,
++        native_module->module()->functions[fct_index].imported,
++        wasm_call_params.module(), isolate(), source_positions_,
++        wasm::WasmFeatures::FromFlags(), continuation_frame_state,
++        set_in_wasm_flag);
+ 
+     // Extract the inlinee start/end nodes.
+     wrapper_start_node = graph()->start();
+diff --git a/src/compiler/wasm-compiler.cc b/src/compiler/wasm-compiler.cc
+index a1dd77d2cb5260e6a20ae8a1f8a845d0065a4b19..b397936f9e8f4fe76210a298ffa573750a02b8e3 100644
+--- a/src/compiler/wasm-compiler.cc
++++ b/src/compiler/wasm-compiler.cc
+@@ -8429,7 +8429,7 @@ class WasmWrapperGraphBuilder : public WasmGraphBuilder {
+ 
+ void BuildInlinedJSToWasmWrapper(Zone* zone, MachineGraph* mcgraph,
+                                  const wasm::FunctionSig* signature,
+-                                 const wasm::WasmModule* module,
++                                 bool is_import, const wasm::WasmModule* module,
+                                  Isolate* isolate,
+                                  compiler::SourcePositionTable* spt,
+                                  wasm::WasmFeatures features, Node* frame_state,
+@@ -8438,7 +8438,7 @@ void BuildInlinedJSToWasmWrapper(Zone* zone, MachineGraph* mcgraph,
+                                   WasmGraphBuilder::kNoSpecialParameterMode,
+                                   isolate, spt,
+                                   StubCallMode::kCallBuiltinPointer, features);
+-  builder.BuildJSToWasmWrapper(false, false, frame_state, set_in_wasm_flag);
++  builder.BuildJSToWasmWrapper(is_import, false, frame_state, set_in_wasm_flag);
+ }
+ 
+ std::unique_ptr<TurbofanCompilationJob> NewJSToWasmCompilationJob(
+diff --git a/src/compiler/wasm-compiler.h b/src/compiler/wasm-compiler.h
+index 5c466766cc139e9f7e1bd95010a87de3f995d909..e15624f6b1ee088007a826c776dddbd5c0565c56 100644
+--- a/src/compiler/wasm-compiler.h
++++ b/src/compiler/wasm-compiler.h
+@@ -895,7 +895,7 @@ class WasmGraphBuilder {
+ 
+ V8_EXPORT_PRIVATE void BuildInlinedJSToWasmWrapper(
+     Zone* zone, MachineGraph* mcgraph, const wasm::FunctionSig* signature,
+-    const wasm::WasmModule* module, Isolate* isolate,
++    bool is_import, const wasm::WasmModule* module, Isolate* isolate,
+     compiler::SourcePositionTable* spt, wasm::WasmFeatures features,
+     Node* frame_state, bool set_in_wasm_flag);
+ 
+diff --git a/src/wasm/wasm-objects.cc b/src/wasm/wasm-objects.cc
+index 5a6b9dd178047dce7f8614df016b5a30d5a51e55..f958ea155ca6c3530a670edd927c8c177a0b28bd 100644
+--- a/src/wasm/wasm-objects.cc
++++ b/src/wasm/wasm-objects.cc
+@@ -1478,13 +1478,19 @@ WasmInstanceObject::GetOrCreateWasmInternalFunction(
+     rtt = isolate->factory()->wasm_internal_function_map();
+   }
+ 
++  // Only set the call target if the function is not an imported function. The
++  // reason is that after wrapper tier-up the call target cannot be set anymore
++  // for imported functions, because the slot in the imported function table
++  // cannot be found anymore. Avoiding setting the call target makes the wrapper
++  // tiers behave more consistently, which can prevent surprising bugs.
+   auto result = isolate->factory()->NewWasmInternalFunction(
+-      instance->GetCallTarget(function_index), ref, rtt, function_index);
++      IsWasmApiFunctionRef(*ref) ? 0 : instance->GetCallTarget(function_index),
++      ref, rtt, function_index);
+ 
+   if (IsWasmApiFunctionRef(*ref)) {
+     Handle<WasmApiFunctionRef> wafr = Handle<WasmApiFunctionRef>::cast(ref);
+     WasmApiFunctionRef::SetInternalFunctionAsCallOrigin(wafr, result);
+-    wafr->set_call_origin(*result);
++    result->set_code(isolate->builtins()->code(Builtin::kWasmToJsWrapperAsm));
+   }
+   WasmInstanceObject::SetWasmInternalFunction(instance, function_index, result);
+   return result;
+diff --git a/test/mjsunit/regress/wasm/inline-call-to-reexport.js b/test/mjsunit/regress/wasm/inline-call-to-reexport.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..23557210a5bee469233e4ec4d3eb644869269454
+--- /dev/null
++++ b/test/mjsunit/regress/wasm/inline-call-to-reexport.js
+@@ -0,0 +1,28 @@
++// Copyright 2023 the V8 project authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++// Flags: --allow-natives-syntax --experimental-wasm-type-reflection
++// Flags: --wasm-wrapper-tiering-budget=1
++
++d8.file.execute("test/mjsunit/wasm/wasm-module-builder.js");
++
++const builder = new WasmModuleBuilder();
++const impIndex = builder.addImport('m', 'foo', kSig_v_v);
++const table = builder.addTable(kWasmAnyFunc, 10).exportAs('table').index;
++builder.addActiveElementSegment(table, wasmI32Const(0), [impIndex]);
++const reexport =
++    builder.instantiate({'m': {'foo': () => console.log('Hello World')}})
++        .exports.table.get(0);
++
++function toBeOptimized() {
++  reexport();
++}
++
++%PrepareFunctionForOptimization(toBeOptimized);
++toBeOptimized();
++toBeOptimized();
++toBeOptimized();
++
++%OptimizeFunctionOnNextCall(toBeOptimized);
++toBeOptimized();

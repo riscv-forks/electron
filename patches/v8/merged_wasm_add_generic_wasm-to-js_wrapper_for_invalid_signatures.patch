@@ -1,0 +1,241 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Andreas Haas <ahaas@chromium.org>
+Date: Mon, 12 Feb 2024 15:05:50 +0100
+Subject: Merged: [wasm] Add generic wasm-to-js wrapper for invalid signatures
+
+This merge contains two CLs:
+
+CL1:
+[wasm] Add generic wasm-to-js wrapper for invalid signatures
+
+So far a specific wasm-to-js wrapper got compiled when a wrapper was
+requested for a signature that was not compatible with JS, e.g. a
+signature that contains a simd. This CL introduces a generic wrapper for
+invalid signatures that throws an exception unconditionally.
+
+There was a code path where the generic wrapper was used for invalid
+signatures. This code path now also  uses the new wrapper for invalid
+signatures.
+
+CL2:
+[wasm] Fix no-generic-wrapper case in GetOrCreateWasmInternalFunction
+
+The existing code always used the generic wrapper, even when the
+generic wrapper was disabled. With this CL we use the generic wrapper
+only if it is enabled.
+
+R=thibaudm@chromium.org
+
+Bug: chromium:323694592
+(cherry picked from commit eacf7f40e7dd2ca11b6e2f63dd8e8bd681ca91c4)
+
+Change-Id: If10bf51fc5fd05c68b6c89affefcbe7d950b4ad7
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/5314416
+Commit-Queue: Andreas Haas <ahaas@chromium.org>
+Reviewed-by: Thibaud Michaud <thibaudm@chromium.org>
+Cr-Commit-Position: refs/branch-heads/12.2@{#36}
+Cr-Branched-From: 6eb5a9616aa6f8c705217aeb7c7ab8c037a2f676-refs/heads/12.2.281@{#1}
+Cr-Branched-From: 44cf56d850167c6988522f8981730462abc04bcc-refs/heads/main@{#91934}
+
+diff --git a/src/builtins/builtins-definitions.h b/src/builtins/builtins-definitions.h
+index 18da8a651ba30fc111bbe4f684df610c6325dda7..28397fcbc088a6822a77afddd08fb2f547588214 100644
+--- a/src/builtins/builtins-definitions.h
++++ b/src/builtins/builtins-definitions.h
+@@ -1008,6 +1008,7 @@ namespace internal {
+   IF_WASM(ASM, WasmReturnPromiseOnSuspendAsm, WasmJSToWasmWrapper)             \
+   IF_WASM(ASM, WasmToJsWrapperAsm, WasmDummy)                                  \
+   IF_WASM(TFC, WasmToJsWrapperCSA, WasmToJSWrapper)                            \
++  IF_WASM(TFC, WasmToJsWrapperInvalidSig, WasmToJSWrapper)                     \
+   IF_WASM(ASM, WasmSuspend, WasmSuspend)                                       \
+   IF_WASM(ASM, WasmResume, WasmDummy)                                          \
+   IF_WASM(ASM, WasmReject, WasmDummy)                                          \
+diff --git a/src/builtins/builtins-wasm-gen.cc b/src/builtins/builtins-wasm-gen.cc
+index 55fc36fd2c95ba5effe0c417e508d99b48567ddb..135d8856e7135ee3d87543c82df93710093187b1 100644
+--- a/src/builtins/builtins-wasm-gen.cc
++++ b/src/builtins/builtins-wasm-gen.cc
+@@ -132,5 +132,16 @@ TF_BUILTIN(WasmToJsWrapperCSA, WasmBuiltinsAssembler) {
+   PopAndReturn(result.popCount, result.result0, result.result1, result.result2,
+                result.result3);
+ }
++
++TF_BUILTIN(WasmToJsWrapperInvalidSig, WasmBuiltinsAssembler) {
++  TNode<WasmApiFunctionRef> ref =
++      UncheckedParameter<WasmApiFunctionRef>(Descriptor::kWasmApiFunctionRef);
++  TNode<Context> context =
++      LoadObjectField<Context>(ref, WasmApiFunctionRef::kNativeContextOffset);
++
++  CallRuntime(Runtime::kWasmThrowJSTypeError, context);
++  Unreachable();
++}
++
+ }  // namespace internal
+ }  // namespace v8
+diff --git a/src/builtins/wasm-to-js.tq b/src/builtins/wasm-to-js.tq
+index 82751b72478f42a1befb5b056b024884cc2995f4..18a8efb44c8de6ac00f73370781a1a343b6ac41e 100644
+--- a/src/builtins/wasm-to-js.tq
++++ b/src/builtins/wasm-to-js.tq
+@@ -4,6 +4,7 @@
+ 
+ namespace runtime {
+ extern runtime TierUpWasmToJSWrapper(NoContext, WasmApiFunctionRef): JSAny;
++extern runtime WasmThrowJSTypeError(Context): never;
+ }  // namespace runtime
+ 
+ namespace wasm {
+@@ -107,6 +108,8 @@ transitioning macro WasmToJSWrapper(ref: WasmApiFunctionRef): WasmToJSResult {
+       const val = *RefCast<float64>(slot);
+       outParams.objects[nextIndex++] = Convert<Number>(val);
+     } else {
++      const paramKind = paramType & kValueTypeKindBitsMask;
++      dcheck(paramKind == ValueKind::kRef || paramKind == ValueKind::kRefNull);
+       nextIndex++;
+       hasTaggedParams = true;
+     }
+diff --git a/src/wasm/module-instantiate.cc b/src/wasm/module-instantiate.cc
+index 86c4d5ce23cba9fc90661f0e02fd046477429211..463e71dc7c118e5f218a78fdc5eb7e696c2ce6cf 100644
+--- a/src/wasm/module-instantiate.cc
++++ b/src/wasm/module-instantiate.cc
+@@ -1619,6 +1619,10 @@ bool InstanceBuilder::ProcessImportedFunction(
+   ImportCallKind kind = resolved.kind();
+   js_receiver = resolved.callable();
+   switch (kind) {
++    case ImportCallKind::kRuntimeTypeError:
++      imported_entry.SetWasmToJs(isolate_, js_receiver, resolved.suspend(),
++                                 expected_sig);
++      break;
+     case ImportCallKind::kLinkError:
+       thrower_->LinkError(
+           "%s: imported function does not match the expected type",
+diff --git a/src/wasm/wasm-objects.cc b/src/wasm/wasm-objects.cc
+index f958ea155ca6c3530a670edd927c8c177a0b28bd..f5a376af1322c3865461143d9781b52919b3c079 100644
+--- a/src/wasm/wasm-objects.cc
++++ b/src/wasm/wasm-objects.cc
+@@ -1064,10 +1064,18 @@ void ImportedFunctionEntry::SetWasmToJs(Isolate* isolate,
+                                         Handle<JSReceiver> callable,
+                                         wasm::Suspend suspend,
+                                         const wasm::FunctionSig* sig) {
+-  DCHECK(UseGenericWasmToJSWrapper(wasm::kDefaultImportCallKind, sig, suspend));
+-  Address wrapper = isolate->builtins()
+-                        ->code(Builtin::kWasmToJsWrapperAsm)
+-                        ->instruction_start();
++  Address wrapper;
++  if (wasm::IsJSCompatibleSignature(sig)) {
++    DCHECK(
++        UseGenericWasmToJSWrapper(wasm::kDefaultImportCallKind, sig, suspend));
++    wrapper = isolate->builtins()
++                  ->code(Builtin::kWasmToJsWrapperAsm)
++                  ->instruction_start();
++  } else {
++    wrapper = isolate->builtins()
++                  ->code(Builtin::kWasmToJsWrapperInvalidSig)
++                  ->instruction_start();
++  }
+   TRACE_IFT("Import callable 0x%" PRIxPTR "[%d] = {callable=0x%" PRIxPTR
+             ", target=0x%" PRIxPTR "}\n",
+             instance_->ptr(), index_, callable->ptr(), wrapper);
+@@ -1458,7 +1466,10 @@ WasmInstanceObject::GetOrCreateWasmInternalFunction(
+                        instance->imported_function_refs()->get(function_index)),
+                    isolate);
+ 
+-  if (v8_flags.wasm_to_js_generic_wrapper && IsWasmApiFunctionRef(*ref)) {
++  bool setup_new_ref_with_generic_wrapper =
++      v8_flags.wasm_to_js_generic_wrapper && IsWasmApiFunctionRef(*ref);
++
++  if (setup_new_ref_with_generic_wrapper) {
+     Handle<WasmApiFunctionRef> wafr = Handle<WasmApiFunctionRef>::cast(ref);
+     ref = isolate->factory()->NewWasmApiFunctionRef(
+         handle(wafr->callable(), isolate),
+@@ -1478,19 +1489,39 @@ WasmInstanceObject::GetOrCreateWasmInternalFunction(
+     rtt = isolate->factory()->wasm_internal_function_map();
+   }
+ 
+-  // Only set the call target if the function is not an imported function. The
+-  // reason is that after wrapper tier-up the call target cannot be set anymore
+-  // for imported functions, because the slot in the imported function table
+-  // cannot be found anymore. Avoiding setting the call target makes the wrapper
+-  // tiers behave more consistently, which can prevent surprising bugs.
++  // Only set the call target if we do not use the generic wasm-to-js wrapper.
++  // The reason is that after wrapper tier-up the call target cannot be set
++  // anymore for imported functions, because the slot in the imported function
++  // table cannot be found anymore. Avoiding setting the call target makes the
++  // wrapper tiers behave more consistently, which can prevent surprising bugs.
++  // Background: the WasmInternalFunction has two fields to store a reference to
++  // wrapper code: 1) the `call_target` field, and 2) the `code` field. In
++  // generated code, we use the `call_target` if it is set, and if it is not
++  // set, the `code` field is used. During wrapper tier-up, only the `code`
++  // field can be updated, not the `call_target` field, because the slot in the
++  // imported function table cannot be found anymore. For the newly created
++  // WasmInternalFunction, this would mean that calls with the generic wrapper
++  // would be done with the `call_target`, but after tier-up, the call with the
++  // optimized wrapper would be done with the 'code' field.
+   auto result = isolate->factory()->NewWasmInternalFunction(
+-      IsWasmApiFunctionRef(*ref) ? 0 : instance->GetCallTarget(function_index),
++      setup_new_ref_with_generic_wrapper
++          ? 0
++          : instance->GetCallTarget(function_index),
+       ref, rtt, function_index);
+ 
+-  if (IsWasmApiFunctionRef(*ref)) {
++  if (setup_new_ref_with_generic_wrapper) {
+     Handle<WasmApiFunctionRef> wafr = Handle<WasmApiFunctionRef>::cast(ref);
+-    WasmApiFunctionRef::SetInternalFunctionAsCallOrigin(wafr, result);
+-    result->set_code(isolate->builtins()->code(Builtin::kWasmToJsWrapperAsm));
++    const wasm::FunctionSig* sig =
++        module->signature(module->functions[function_index].sig_index);
++    if (wasm::IsJSCompatibleSignature(sig)) {
++      DCHECK(UseGenericWasmToJSWrapper(wasm::kDefaultImportCallKind, sig,
++                                       wasm::Suspend::kNoSuspend));
++      WasmApiFunctionRef::SetInternalFunctionAsCallOrigin(wafr, result);
++      result->set_code(isolate->builtins()->code(Builtin::kWasmToJsWrapperAsm));
++    } else {
++      result->set_code(
++          isolate->builtins()->code(Builtin::kWasmToJsWrapperInvalidSig));
++    }
+   }
+   WasmInstanceObject::SetWasmInternalFunction(instance, function_index, result);
+   return result;
+@@ -1988,6 +2019,7 @@ bool UseGenericWasmToJSWrapper(wasm::ImportCallKind kind,
+       kind != wasm::ImportCallKind::kJSFunctionArityMismatch) {
+     return false;
+   }
++  DCHECK(wasm::IsJSCompatibleSignature(sig));
+ #if !V8_TARGET_ARCH_X64 && !V8_TARGET_ARCH_ARM64 && !V8_TARGET_ARCH_ARM && \
+     !V8_TARGET_ARCH_IA32
+   return false;
+diff --git a/test/mjsunit/mjsunit.status b/test/mjsunit/mjsunit.status
+index eb121cd4ff498c18fdfe41677c48bfa8dadac7bd..60fcc57f10306fc419a97ea5818566ba77a573fc 100644
+--- a/test/mjsunit/mjsunit.status
++++ b/test/mjsunit/mjsunit.status
+@@ -1680,6 +1680,7 @@
+   'regress/wasm/regress-1408337': [SKIP],
+   'regress/wasm/regress-1417516': [SKIP],
+   'regress/wasm/regress-1443218': [SKIP],
++  'regress/wasm/regress-323694592': [SKIP],
+   'regress/wasm/regress-crbug-1338980': [SKIP],
+   'regress/wasm/regress-crbug-1355070': [SKIP],
+   'regress/wasm/regress-crbug-1356718': [SKIP],
+diff --git a/test/mjsunit/regress/wasm/regress-323694592.js b/test/mjsunit/regress/wasm/regress-323694592.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..7031d699fb617832d9411c2a08217a532145e5e5
+--- /dev/null
++++ b/test/mjsunit/regress/wasm/regress-323694592.js
+@@ -0,0 +1,19 @@
++// Copyright 2024 the V8 project authors. All rights reserved.
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++d8.file.execute('test/mjsunit/wasm/wasm-module-builder.js');
++
++const builder = new WasmModuleBuilder();
++const typeId = builder.addType(makeSig([kWasmS128], []));
++const importId = builder.addImport('mod', 'foo', typeId);
++builder.addDeclarativeElementSegment([importId]);
++
++builder.addFunction('main', kSig_v_v)
++  .addBody([
++    ... wasmS128Const(0, 0),
++    kExprRefFunc, importId,
++    kExprCallRef, typeId,
++]).exportFunc();
++const instance = builder.instantiate({mod: {foo: assertUnreachable}});
++assertThrows(instance.exports.main, TypeError);
