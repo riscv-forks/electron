@@ -8,7 +8,7 @@ Releases will be published later.
 
 ## Repo Organization
 
-Branches with riscv64 support have a suffix of `-riscv`. e.g. `main-riscv`, `28-x-y-riscv`
+Branches with riscv64 support have a suffix of `-riscv`. e.g. `main-riscv`, `28-x-y-riscv`, `v29.1.1-riscv`.
 
 ## Necessary Toolchains for cross-compilation
 
@@ -33,6 +33,18 @@ This repo supports both building in RISC-V environment and cross-compiling from 
 #### Host Environment
 
 Debian bookworm.
+
+#### Getting the Source
+
+First, [install depot_tools and add it to PATH](https://commondatastorage.googleapis.com/chrome-infra-docs/flat/depot_tools/docs/html/depot_tools_tutorial.html#_setting_up).
+
+Then, get the source code:
+
+```bash
+$ mkdir electron && cd electron
+$ gclient config --name "src/electron" --unmanaged https://github.com/riscv-forks/electron@BRANCH_NAME_HERE
+$ gclient sync --with_branch_heads --with_tags
+```
 
 #### Toolchain Preparation
 
@@ -81,7 +93,9 @@ ninja -C out/Release-riscv64 electron:electron_dist_zip
 
 ### Build on RISC-V
 
-TODO
+Arch Linux riscv64 is building electron on riscv64. 
+
+The patch of Arch Linux's PKGBUILD is available here for reference: https://github.com/felixonmars/archriscv-packages/blob/master/electron28/riscv64.patch
 
 ## TODOs
 
