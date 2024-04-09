@@ -22,6 +22,8 @@ def add_debug_link_into_binary(binary_path, target_cpu, debug_dir):
   # Make sure the path to the binary is not relative because of cwd param.
   real_binary_path = os.path.realpath(binary_path)
   cmd = ['objcopy', '--add-gnu-debuglink=' + debug_name, real_binary_path]
+  if PLATFORM == 'linux' and target_cpu == 'riscv64':
+    cmd[0] = 'riscv64-linux-gnu-objcopy'
   execute(cmd, cwd=debug_dir)
 
 def get_debug_name(binary_path):
