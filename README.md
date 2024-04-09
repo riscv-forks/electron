@@ -22,7 +22,7 @@ Prebuilt toolchains are available in GitHub Releases. They can also be built fro
 Toolchain issues:
 
 - https://github.com/llvm/llvm-project/issues/79944
-- Rust doesn't embed target-abi llvm module flag. There's a work-around applied to rust toolchain. TODO: offer this to upstream.
+- [Rust doesn't embed target-abi llvm module flag](https://github.com/rust-lang/rust/issues/121924). There's a work-around applied to rust toolchain. It will be fixed by https://github.com/rust-lang/rust/pull/123612
 
 ## Build Instruction
 
