@@ -20,6 +20,8 @@ def copy_debug_from_binary(binary_path, out_dir, target_cpu, compress):
     return
   debug_name = get_debug_name(binary_path)
   cmd = ['objcopy', '--only-keep-debug']
+  if PLATFORM == 'linux' and target_cpu == 'riscv64':
+    cmd[0] = 'riscv64-linux-gnu-objcopy'
   if compress:
     cmd.extend(['--compress-debug-sections'])
   cmd.extend([binary_path, os.path.join(out_dir, debug_name)])
