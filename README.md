@@ -4,7 +4,7 @@ This repo is a fork of electron with riscv64 support added.
 
 Status: Work In Progress
 
-Releases will be published later.
+Releases are published in https://github.com/riscv-forks/electron-riscv-releases
 
 ## Repo Organization
 
@@ -100,6 +100,4 @@ The patch of Arch Linux's PKGBUILD is available here for reference: https://gith
 ## TODOs
 
 - [ ] Upstream more patches.
-- [ ] Set up CI to build and publish toolchains to GitHub Releases.
-- [ ] Set up CI to build and publish electron to GitHub Releases
 - [ ] Set up CI to automatically create riscv branches from upstream tags.
