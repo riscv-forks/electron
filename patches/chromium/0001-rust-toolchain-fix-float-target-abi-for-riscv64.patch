@@ -1,37 +1,35 @@
-From 1f99c5d958e4c84b0acf001eef2d1026bcd080d0 Mon Sep 17 00:00:00 2001
+From 2ee319119d9bc6bd9231f943144fb4749907086b Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 10:31:01 +0800
 Subject: [PATCH] rust toolchain: fix float target-abi for riscv64
 
 ---
- tools/rust/build_rust.py | 14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ tools/rust/build_rust.py | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
 diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
-index cafae76e37560..8235fafb47b40 100755
+index 0ec68bab0d58a..3440f10cabdd8 100755
 --- a/tools/rust/build_rust.py
 +++ b/tools/rust/build_rust.py
-@@ -692,11 +692,11 @@ def main():
-         return 1
+@@ -664,11 +664,12 @@ def main():
+     args, rest = parser.parse_known_args()
  
      debian_sysroot = None
 -    if sys.platform.startswith('linux') and not args.sync_for_gnrt:
--        # Fetch sysroot we build rustc against. This ensures a minimum supported
--        # host (not Chromium target). Since the rustc linux package is for
--        # x86_64 only, that is the sole needed sysroot.
--        debian_sysroot = DownloadDebianSysroot('amd64')
-+    # if sys.platform.startswith('linux') and not args.sync_for_gnrt:
-+    #     # Fetch sysroot we build rustc against. This ensures a minimum supported
-+    #     # host (not Chromium target). Since the rustc linux package is for
-+    #     # x86_64 only, that is the sole needed sysroot.
-+    #     debian_sysroot = DownloadDebianSysroot('amd64')
++    # Somehow building rust with native sysroot fail
++    #if sys.platform.startswith('linux') and not args.sync_for_gnrt:
+         # Fetch sysroot we build rustc against. This ensures a minimum supported
+         # host (not Chromium target). Since the rustc linux package is for
+         # x86_64 only, that is the sole needed sysroot.
+-        debian_sysroot = DownloadDebianSysroot('amd64', args.skip_checkout)
++    #    debian_sysroot = DownloadDebianSysroot('amd64', args.skip_checkout)
  
      # Require zlib compression.
      if sys.platform == 'win32':
-@@ -775,6 +775,10 @@ def main():
-         GitCherryPick(RUST_SRC_DIR, 'https://github.com/rust-lang/rust.git',
-                       '0a285e8de7eec36e1de68c83764d23f2522a4274')
+@@ -723,6 +724,10 @@ def main():
  
+     if not args.skip_checkout:
+         CheckoutGitRepo('Rust', RUST_GIT_URL, checkout_revision, RUST_SRC_DIR)
 +        # Fix chromium linking for riscv64
 +        GitCherryPick(RUST_SRC_DIR, 'https://github.com/kxxt/rust.git',
 +                  '6ec00d6675546438db0f947598935621d4ff885f')
