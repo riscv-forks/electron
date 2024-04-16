@@ -1,4 +1,4 @@
-From ca0d02adbe1b7c50c72edb01121187b45a5b01b0 Mon Sep 17 00:00:00 2001
+From 9a31fc0b4551ff232ba0847d36b38bc076a8ae6a Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 11:04:32 +0800
 Subject: [PATCH] clang: add riscv64 support to package script
@@ -9,7 +9,7 @@ And drop android and fuchsia build to reduce build time.
  1 file changed, 18 insertions(+), 47 deletions(-)
 
 diff --git a/tools/clang/scripts/package.py b/tools/clang/scripts/package.py
-index bfc7cfd92e70b..b141dc2c3f932 100755
+index cc5a4a5536d85..f144b87e8686c 100755
 --- a/tools/clang/scripts/package.py
 +++ b/tools/clang/scripts/package.py
 @@ -246,7 +246,7 @@ def main():
@@ -40,8 +40,8 @@ index bfc7cfd92e70b..b141dc2c3f932 100755
 -          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan_static.a')
    if sys.platform == 'darwin':
      want.extend([
-       # AddressSanitizer runtime.
-@@ -346,36 +333,25 @@ def main():
+       # Add llvm-objcopy for its use as install_name_tool.
+@@ -349,36 +336,25 @@ def main():
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a.syms',
@@ -84,7 +84,7 @@ index bfc7cfd92e70b..b141dc2c3f932 100755
  
          # crtstart/crtend for Linux and Lacros.
          'lib/clang/$V/lib/aarch64-unknown-linux-gnu/clang_rt.crtbegin.o',
-@@ -384,12 +360,8 @@ def main():
+@@ -387,12 +363,8 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/clang_rt.crtend.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtbegin.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtend.o',
@@ -99,7 +99,7 @@ index bfc7cfd92e70b..b141dc2c3f932 100755
  
          # MemorySanitizer C runtime (pure C won't link with *_cxx).
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.msan.a',
-@@ -404,34 +376,33 @@ def main():
+@@ -407,34 +379,33 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/libclang_rt.profile.a',
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.profile.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.profile.a',
@@ -144,5 +144,5 @@ index bfc7cfd92e70b..b141dc2c3f932 100755
          # Ignorelist for MemorySanitizer (used on Linux only).
          'lib/clang/$V/share/msan_*list.txt',
 -- 
-2.43.0
+2.39.2
 
