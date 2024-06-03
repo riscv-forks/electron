@@ -1,4 +1,4 @@
-From 99890627743f2d20bd7b5793db01abef6338fbd5 Mon Sep 17 00:00:00 2001
+From 130112578f993e4c3d6a6e4e7cfb68c9e060d1aa Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 12:55:08 +0100
 Subject: [PATCH] rust toolchain: fix float target-abi for riscv64
@@ -8,10 +8,10 @@ Subject: [PATCH] rust toolchain: fix float target-abi for riscv64
  1 file changed, 16 insertions(+), 5 deletions(-)
 
 diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
-index f10dc3f56bdf9..9265297afc3c8 100755
+index e0374f04ea613..31d7ca20a1e1e 100755
 --- a/tools/rust/build_rust.py
 +++ b/tools/rust/build_rust.py
-@@ -687,11 +687,11 @@ def main():
+@@ -672,11 +672,11 @@ def main():
          return 1
  
      debian_sysroot = None
@@ -28,10 +28,10 @@ index f10dc3f56bdf9..9265297afc3c8 100755
  
      # Require zlib compression.
      if sys.platform == 'win32':
-@@ -760,6 +760,17 @@ def main():
-             '046503e6f4318aaba649e51becc38b1db9c87ee7'
-         ])
-         GitCherryPick(RUST_SRC_DIR, '046503e6f4318aaba649e51becc38b1db9c87ee7')
+@@ -739,6 +739,17 @@ def main():
+         # TODO(crbug.com/1472655): Remove this cherrypicking after the
+         # cherrypicked commit is included in the checkout.
+         GitCherryPick(RUST_SRC_DIR, '0081d64e4b8413219ddec5d1013d522edbf132')
 +        RunCommand([
 +            'git', '-C', RUST_SRC_DIR, 'remote', 'add', 'kxxt',
 +            'https://github.com/kxxt/rust.git'
@@ -39,10 +39,10 @@ index f10dc3f56bdf9..9265297afc3c8 100755
 +                   fail_hard=False)
 +        RunCommand([
 +            'git', '-C', RUST_SRC_DIR, 'fetch', 'kxxt',
-+                      '4cf823be86b86604727e82c79d156a44f6ead569'
++                      '3752291e2e5dddb38cffb36e8f89af2a0d20efc3'
 +        ])
 +        GitCherryPick(RUST_SRC_DIR,
-+                      '4cf823be86b86604727e82c79d156a44f6ead569')
++                      '3752291e2e5dddb38cffb36e8f89af2a0d20efc3')
  
          path = FetchBetaPackage('cargo', checkout_revision)
          if sys.platform == 'win32':
