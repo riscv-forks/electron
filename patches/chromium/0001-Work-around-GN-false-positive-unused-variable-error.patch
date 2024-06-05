@@ -1,0 +1,29 @@
+From 0bb635b7e83a630c76eb7f6970154197810852c0 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sat, 10 Feb 2024 15:39:46 +0100
+Subject: [PATCH] Work around GN false positive unused variable error
+
+ERROR at //build/config/linux/atspi2/BUILD.gn:19:13: Assignment had no effect.
+    major = atspi_version[0]
+            ^--------------
+You set the variable "major" here and it was unused before it went
+out of scope.
+---
+ build/config/linux/atspi2/BUILD.gn | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/build/config/linux/atspi2/BUILD.gn b/build/config/linux/atspi2/BUILD.gn
+index 92234b463a50c..7e60c01ee1e97 100644
+--- a/build/config/linux/atspi2/BUILD.gn
++++ b/build/config/linux/atspi2/BUILD.gn
+@@ -30,5 +30,7 @@ if (use_atk) {
+         "ATSPI_MICRO_VERSION=$micro",
+       ]
+     }
++
++    assert(major + minor + micro > 0)
+   }
+ }
+-- 
+2.39.2
+
