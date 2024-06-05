@@ -1,4 +1,8 @@
 {
+  "src/electron/patches/swiftshader": "src/third_party/swiftshader",
+
+  "src/electron/patches/lss": "src/third_party/lss",
+
   "src/electron/patches/chromium": "src",
 
   "src/electron/patches/boringssl": "src/third_party/boringssl/src",
