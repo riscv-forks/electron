@@ -1,15 +1,16 @@
-From 31c5be05b360a3461e12ad28627bb0c7977c3339 Mon Sep 17 00:00:00 2001
+From a762ff58032ba8955effab23bde54adaa15f0e72 Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 12:45:33 +0100
-Subject: [PATCH 1/1] clang: add riscv64 support to package script
+Subject: [PATCH] clang: add riscv64 support to package script
 
 And drop android and fuchsia build to reduce build time.
+Patch-Filename: 0001-clang-add-riscv64-support-to-package-script.patch
 ---
- tools/clang/scripts/package.py | 68 +++++++++-------------------------
- 1 file changed, 18 insertions(+), 50 deletions(-)
+ tools/clang/scripts/package.py | 58 ++++++++--------------------------
+ 1 file changed, 14 insertions(+), 44 deletions(-)
 
 diff --git a/tools/clang/scripts/package.py b/tools/clang/scripts/package.py
-index f6f3bcaa0827e..10244909046bd 100755
+index 00858cc30e9d0..49b75a089d817 100755
 --- a/tools/clang/scripts/package.py
 +++ b/tools/clang/scripts/package.py
 @@ -243,7 +243,7 @@ def main():
@@ -47,7 +48,7 @@ index f6f3bcaa0827e..10244909046bd 100755
    if sys.platform == 'darwin':
      want.extend([
        # AddressSanitizer runtime.
-@@ -346,36 +330,25 @@ def main():
+@@ -349,33 +333,25 @@ def main():
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a.syms',
@@ -66,18 +67,15 @@ index f6f3bcaa0827e..10244909046bd 100755
 -        'lib/clang/$V/lib/linux/libclang_rt.asan-aarch64-android.so',
 -        'lib/clang/$V/lib/linux/libclang_rt.asan-arm-android.so',
 -        'lib/clang/$V/lib/linux/libclang_rt.asan-i686-android.so',
--        'lib/clang/$V/lib/linux/libclang_rt.asan-riscv64-android.so',
 -        'lib/clang/$V/lib/linux/libclang_rt.asan_static-aarch64-android.a',
 -        'lib/clang/$V/lib/linux/libclang_rt.asan_static-arm-android.a',
 -        'lib/clang/$V/lib/linux/libclang_rt.asan_static-i686-android.a',
--        'lib/clang/$V/lib/linux/libclang_rt.asan_static-riscv64-android.a',
 -
 -        # Builtins for Android.
 -        'lib/clang/$V/lib/linux/libclang_rt.builtins-aarch64-android.a',
 -        'lib/clang/$V/lib/linux/libclang_rt.builtins-arm-android.a',
 -        'lib/clang/$V/lib/linux/libclang_rt.builtins-i686-android.a',
 -        'lib/clang/$V/lib/linux/libclang_rt.builtins-x86_64-android.a',
--        'lib/clang/$V/lib/linux/libclang_rt.builtins-riscv64-android.a',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan_cxx.a',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan_cxx.a.syms',
  
@@ -90,7 +88,7 @@ index f6f3bcaa0827e..10244909046bd 100755
  
          # crtstart/crtend for Linux and Lacros.
          'lib/clang/$V/lib/aarch64-unknown-linux-gnu/clang_rt.crtbegin.o',
-@@ -384,12 +357,8 @@ def main():
+@@ -384,10 +360,8 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/clang_rt.crtend.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtbegin.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtend.o',
@@ -98,14 +96,12 @@ index f6f3bcaa0827e..10244909046bd 100755
 -        # HWASAN Android runtime.
 -        'lib/clang/$V/lib/linux/libclang_rt.hwasan-aarch64-android.so',
 -        'lib/clang/$V/lib/linux/libclang_rt.hwasan-preinit-aarch64-android.a',
--        'lib/clang/$V/lib/linux/libclang_rt.hwasan-riscv64-android.so',
--        'lib/clang/$V/lib/linux/libclang_rt.hwasan-preinit-riscv64-android.a',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/clang_rt.crtbegin.o',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/clang_rt.crtend.o',
  
          # MemorySanitizer C runtime (pure C won't link with *_cxx).
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.msan.a',
-@@ -404,34 +373,33 @@ def main():
+@@ -402,10 +376,7 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/libclang_rt.profile.a',
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.profile.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.profile.a',
@@ -113,22 +109,11 @@ index f6f3bcaa0827e..10244909046bd 100755
 -        'lib/clang/$V/lib/linux/libclang_rt.profile-x86_64-android.a',
 -        'lib/clang/$V/lib/linux/libclang_rt.profile-aarch64-android.a',
 -        'lib/clang/$V/lib/linux/libclang_rt.profile-arm-android.a',
--        'lib/clang/$V/lib/linux/libclang_rt.profile-riscv64-android.a',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.profile.a',
  
          # ThreadSanitizer C runtime (pure C won't link with *_cxx).
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan.a',
-         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan.a.syms',
-+        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan.a',
-+        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan.a.syms',
- 
-         # ThreadSanitizer C++ runtime.
-         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan_cxx.a',
-         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan_cxx.a.syms',
-+        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan_cxx.a',
-+        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan_cxx.a.syms',
- 
-         # UndefinedBehaviorSanitizer C runtime (pure C won't link with *_cxx).
+@@ -419,16 +390,15 @@ def main():
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a.syms',
@@ -143,12 +128,12 @@ index f6f3bcaa0827e..10244909046bd 100755
 -        # UndefinedBehaviorSanitizer Android runtime, needed for CFI.
 -        'lib/clang/$V/lib/linux/libclang_rt.ubsan_standalone-aarch64-android.so',
 -        'lib/clang/$V/lib/linux/libclang_rt.ubsan_standalone-arm-android.so',
--        'lib/clang/$V/lib/linux/libclang_rt.ubsan_standalone-riscv64-android.so',
+-
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.ubsan_standalone_cxx.a',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.ubsan_standalone_cxx.a.syms',
- 
          # Ignorelist for MemorySanitizer (used on Linux only).
          'lib/clang/$V/share/msan_*list.txt',
+ 
 -- 
 2.39.2
 

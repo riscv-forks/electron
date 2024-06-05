@@ -1,21 +1,21 @@
-From 5ffa35b01ce7d779e33d633070e1ef5ded326d3f Mon Sep 17 00:00:00 2001
+From bbab7552789027cd3cfc27b18a2d50f81798c37a Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 09:19:00 +0800
 Subject: [PATCH] clang toolchain: riscv64 support
 
 Patch-Dir: src/electron/patches/chromium
 Patch-Filename: 0007-clang-toolchain-riscv64-support.patch
+Patch-Filename: 0007-clang-toolchain-riscv64-support.patch
 ---
- build/config/clang/BUILD.gn    |  2 ++
- tools/clang/scripts/build.py   | 21 ++++++++++++++++++++-
- tools/clang/scripts/package.py |  4 ----
- 3 files changed, 22 insertions(+), 5 deletions(-)
+ build/config/clang/BUILD.gn  |  2 ++
+ tools/clang/scripts/build.py | 12 ++++++++++++
+ 2 files changed, 14 insertions(+)
 
 diff --git a/build/config/clang/BUILD.gn b/build/config/clang/BUILD.gn
-index fe044e29e428b..160f045341dce 100644
+index 4bbded9843333..e55f25c429414 100644
 --- a/build/config/clang/BUILD.gn
 +++ b/build/config/clang/BUILD.gn
-@@ -124,6 +124,8 @@ template("clang_lib") {
+@@ -151,6 +151,8 @@ template("clang_lib") {
            _dir = "armv7-unknown-linux-gnueabihf"
          } else if (current_cpu == "arm64") {
            _dir = "aarch64-unknown-linux-gnu"
@@ -25,73 +25,35 @@ index fe044e29e428b..160f045341dce 100644
            assert(false)  # Unhandled cpu type
          }
 diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
-index 2e84b05083e66..982715be33b38 100755
+index b7ee510202f6b..1acb1d81cd103 100755
 --- a/tools/clang/scripts/build.py
 +++ b/tools/clang/scripts/build.py
-@@ -596,10 +596,17 @@ def DownloadDebianSysroot(platform_name):
-       'arm': '0b9a3c54d2d5f6b1a428369aaa8d7ba7b227f701',
-       # hash from https://chromium-review.googlesource.com/c/chromium/src/+/3684954/1/build/linux/sysroot_scripts/sysroots.json#12
-       'arm64': '0e28d9832614729bb5b731161ff96cb4d516f345',
-+      'riscv64': 'SKIP',
-   }
- 
--  toolchain_name = f'debian_bullseye_{platform_name}_sysroot'
-+  release = 'bullseye' if platform_name != 'riscv64' else 'sid'
-+
-+  toolchain_name = f'debian_{release}_{platform_name}_sysroot'
-   output = os.path.join(LLVM_BUILD_TOOLS_DIR, toolchain_name)
-+
-+  if hashes[platform_name] == 'SKIP':
-+    return output
-+
-   U = toolchain_bucket + hashes[platform_name] + '/' + toolchain_name + \
-       '.tar.xz'
-   DownloadAndUnpack(U, output)
-@@ -901,6 +908,7 @@ def main():
-     sysroot_i386 = DownloadDebianSysroot('i386')
-     sysroot_arm = DownloadDebianSysroot('arm')
-     sysroot_arm64 = DownloadDebianSysroot('arm64')
-+    sysroot_riscv64 = DownloadDebianSysroot('riscv64')
+@@ -824,6 +824,11 @@ def main():
+     U = toolchain_bucket + toolchain_hash + '/' + toolchain_name + '.tar.xz'
+     sysroot_arm64 = os.path.join(LLVM_BUILD_TOOLS_DIR, toolchain_name)
+     DownloadAndUnpack(U, sysroot_arm64)
++    # riscv64
++    toolchain_hash = 'DUMMY'
++    toolchain_name = 'debian_sid_riscv64_sysroot'
++    U = toolchain_bucket + toolchain_hash + '/' + toolchain_name + '.tar.xz'
++    sysroot_riscv64 = os.path.join(LLVM_BUILD_TOOLS_DIR, toolchain_name)
  
      # Add the sysroot to base_cmake_args.
      if platform.machine() == 'aarch64':
-@@ -1227,6 +1235,17 @@ def main():
-         "sanitizers":
-         True,
-     }
-+    runtimes_triples_args['riscv64-unknown-linux-gnu'] = {
-+        "args": [
+@@ -1126,6 +1131,13 @@ def main():
+             # Can't run tests on x86 host.
+             'LLVM_INCLUDE_TESTS=OFF',
+         ]))
++    runtimes_triples_args.append((
++        'riscv64-unknown-linux-gnu',
++        compiler_rt_cmake_flags(sanitizers=True, profile=True) + [
 +            'CMAKE_SYSROOT=%s' % sysroot_riscv64,
 +            # Can't run tests on x86 host.
 +            'LLVM_INCLUDE_TESTS=OFF',
-+        ],
-+        "profile":
-+        True,
-+        "sanitizers":
-+        True,
-+    }
++        ]))
    elif sys.platform == 'win32':
      sysroot = os.path.dirname(os.path.dirname(GetWinSDKDir()))
-     runtimes_triples_args['i386-pc-windows-msvc'] = {
-diff --git a/tools/clang/scripts/package.py b/tools/clang/scripts/package.py
-index 10244909046bd..31f09bf33de0c 100755
---- a/tools/clang/scripts/package.py
-+++ b/tools/clang/scripts/package.py
-@@ -378,14 +378,10 @@ def main():
-         # ThreadSanitizer C runtime (pure C won't link with *_cxx).
-         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan.a',
-         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan.a.syms',
--        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan.a',
--        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan.a.syms',
- 
-         # ThreadSanitizer C++ runtime.
-         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan_cxx.a',
-         'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan_cxx.a.syms',
--        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan_cxx.a',
--        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.tsan_cxx.a.syms',
- 
-         # UndefinedBehaviorSanitizer C runtime (pure C won't link with *_cxx).
-         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
+     runtimes_triples_args.append(
 -- 
 2.39.2
 
