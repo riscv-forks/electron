@@ -1,37 +1,21 @@
-From 130112578f993e4c3d6a6e4e7cfb68c9e060d1aa Mon Sep 17 00:00:00 2001
+From 67fb2f1c041159809ea1f2656f19116b2f3a5434 Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 12:55:08 +0100
 Subject: [PATCH] rust toolchain: fix float target-abi for riscv64
 
+Patch-Filename: 0001-rust-toolchain-fix-float-target-abi-for-riscv64.patch
 ---
- tools/rust/build_rust.py | 21 ++++++++++++++++-----
- 1 file changed, 16 insertions(+), 5 deletions(-)
+ tools/rust/build_rust.py | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
 diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
-index e0374f04ea613..31d7ca20a1e1e 100755
+index 9b1acc5a5faf9..4160672118645 100755
 --- a/tools/rust/build_rust.py
 +++ b/tools/rust/build_rust.py
-@@ -672,11 +672,11 @@ def main():
-         return 1
+@@ -779,6 +779,18 @@ def main():
  
-     debian_sysroot = None
--    if sys.platform.startswith('linux') and not args.sync_for_gnrt:
--        # Fetch sysroot we build rustc against. This ensures a minimum supported
--        # host (not Chromium target). Since the rustc linux package is for
--        # x86_64 only, that is the sole needed sysroot.
--        debian_sysroot = DownloadDebianSysroot('amd64')
-+    # if sys.platform.startswith('linux') and not args.sync_for_gnrt:
-+    #     # Fetch sysroot we build rustc against. This ensures a minimum supported
-+    #     # host (not Chromium target). Since the rustc linux package is for
-+    #     # x86_64 only, that is the sole needed sysroot.
-+    #     debian_sysroot = DownloadDebianSysroot('amd64')
- 
-     # Require zlib compression.
-     if sys.platform == 'win32':
-@@ -739,6 +739,17 @@ def main():
-         # TODO(crbug.com/1472655): Remove this cherrypicking after the
-         # cherrypicked commit is included in the checkout.
-         GitCherryPick(RUST_SRC_DIR, '0081d64e4b8413219ddec5d1013d522edbf132')
+     if not args.skip_checkout:
+         CheckoutGitRepo('Rust', RUST_GIT_URL, checkout_revision, RUST_SRC_DIR)
 +        RunCommand([
 +            'git', '-C', RUST_SRC_DIR, 'remote', 'add', 'kxxt',
 +            'https://github.com/kxxt/rust.git'
@@ -39,13 +23,14 @@ index e0374f04ea613..31d7ca20a1e1e 100755
 +                   fail_hard=False)
 +        RunCommand([
 +            'git', '-C', RUST_SRC_DIR, 'fetch', 'kxxt',
-+                      '3752291e2e5dddb38cffb36e8f89af2a0d20efc3'
++                      'a2dfdaedc20d5fed8873e6e2c310c93431aa9c5e'
 +        ])
-+        GitCherryPick(RUST_SRC_DIR,
-+                      '3752291e2e5dddb38cffb36e8f89af2a0d20efc3')
++        RunCommand([
++            'git', '-C', RUST_SRC_DIR, 'cherry-pick',
++                      'a2dfdaedc20d5fed8873e6e2c310c93431aa9c5e'])
  
-         path = FetchBetaPackage('cargo', checkout_revision)
-         if sys.platform == 'win32':
+     if not args.update_deps:
+         VerifyStage0JsonHash()
 -- 
 2.39.2
 
