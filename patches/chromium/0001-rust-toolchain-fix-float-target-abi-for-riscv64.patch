@@ -1,4 +1,4 @@
-From 67fb2f1c041159809ea1f2656f19116b2f3a5434 Mon Sep 17 00:00:00 2001
+From 6cf2661ba734bb5448e302d5b2ace18b0948fcbc Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 12:55:08 +0100
 Subject: [PATCH] rust toolchain: fix float target-abi for riscv64
@@ -9,10 +9,10 @@ Patch-Filename: 0001-rust-toolchain-fix-float-target-abi-for-riscv64.patch
  1 file changed, 12 insertions(+)
 
 diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
-index 9b1acc5a5faf9..4160672118645 100755
+index 25257b52d9ca8..74174e2534def 100755
 --- a/tools/rust/build_rust.py
 +++ b/tools/rust/build_rust.py
-@@ -779,6 +779,18 @@ def main():
+@@ -700,6 +700,18 @@ def main():
  
      if not args.skip_checkout:
          CheckoutGitRepo('Rust', RUST_GIT_URL, checkout_revision, RUST_SRC_DIR)
@@ -29,8 +29,8 @@ index 9b1acc5a5faf9..4160672118645 100755
 +            'git', '-C', RUST_SRC_DIR, 'cherry-pick',
 +                      'a2dfdaedc20d5fed8873e6e2c310c93431aa9c5e'])
  
-     if not args.update_deps:
-         VerifyStage0JsonHash()
+     VerifyStage0JsonHash()
+     if args.verify_stage0_hash:
 -- 
 2.39.2
 
