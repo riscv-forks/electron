@@ -1,2 +1,3 @@
 riscv-ffmpeg.patch
+riscv-rvv-disable.patch
 link_with_loader_path.patch
