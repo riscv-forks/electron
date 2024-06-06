@@ -1,5 +1,5 @@
 diff --git a/build/linux/sysroot_scripts/sysroot_creator.py b/build/linux/sysroot_scripts/sysroot_creator.py
-index 637ce2e9eb5a3..248d6ab787b69 100755
+index 637ce2e9eb5a3..32ca10033e852 100755
 --- a/build/linux/sysroot_scripts/sysroot_creator.py
 +++ b/build/linux/sysroot_scripts/sysroot_creator.py
 @@ -20,7 +20,7 @@ import requests
@@ -62,7 +62,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "libasyncns0",
      "libatk-bridge2.0-0",
      "libatk-bridge2.0-dev",
-@@ -88,106 +95,124 @@ DEBIAN_PACKAGES = [
+@@ -88,106 +95,125 @@ DEBIAN_PACKAGES = [
      "libatspi2.0-0",
      "libatspi2.0-dev",
      "libattr1",
@@ -144,6 +144,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
 -    "libevdev-dev",
      "libevdev2",
 -    "libevent-2.1-7",
++    "libevdev-dev",
 +    "libexif12",
      "libexpat1",
      "libexpat1-dev",
@@ -202,7 +203,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "libgomp1",
      "libgpg-error-dev",
      "libgpg-error0",
-@@ -198,58 +223,77 @@ DEBIAN_PACKAGES = [
+@@ -198,58 +224,77 @@ DEBIAN_PACKAGES = [
      "libgssapi-krb5-2",
      "libgssrpc4",
      "libgtk-3-0",
@@ -292,7 +293,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "libnsl2",
      "libnspr4",
      "libnspr4-dev",
-@@ -258,37 +302,41 @@ DEBIAN_PACKAGES = [
+@@ -258,37 +303,41 @@ DEBIAN_PACKAGES = [
      "libnss3-dev",
      "libogg-dev",
      "libogg0",
@@ -343,7 +344,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "libproxy1v5",
      "libpsl5",
      "libpthread-stubs0-dev",
-@@ -300,9 +348,18 @@ DEBIAN_PACKAGES = [
+@@ -300,9 +349,18 @@ DEBIAN_PACKAGES = [
      "libqt5dbus5",
      "libqt5gui5",
      "libqt5network5",
@@ -362,7 +363,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "libqt5widgets5",
      "libqt5xml5",
      "libqt6concurrent6",
-@@ -313,52 +370,73 @@ DEBIAN_PACKAGES = [
+@@ -313,52 +371,73 @@ DEBIAN_PACKAGES = [
      "libqt6opengl6",
      "libqt6openglwidgets6",
      "libqt6printsupport6",
@@ -454,7 +455,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "libuuid1",
      "libva-dev",
      "libva-drm2",
-@@ -366,25 +444,24 @@ DEBIAN_PACKAGES = [
+@@ -366,25 +445,24 @@ DEBIAN_PACKAGES = [
      "libva-wayland2",
      "libva-x11-2",
      "libva2",
@@ -485,7 +486,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "libx11-6",
      "libx11-dev",
      "libx11-xcb-dev",
-@@ -392,35 +469,25 @@ DEBIAN_PACKAGES = [
+@@ -392,35 +470,25 @@ DEBIAN_PACKAGES = [
      "libxau-dev",
      "libxau6",
      "libxcb-dri2-0",
@@ -522,7 +523,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "libxcb-xkb1",
      "libxcb1",
      "libxcb1-dev",
-@@ -444,32 +511,30 @@ DEBIAN_PACKAGES = [
+@@ -444,32 +512,30 @@ DEBIAN_PACKAGES = [
      "libxinerama1",
      "libxkbcommon-dev",
      "libxkbcommon-x11-0",
@@ -562,7 +563,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      "shared-mime-info",
      "uuid-dev",
      "wayland-protocols",
-@@ -532,6 +597,9 @@ DEBIAN_PACKAGES_ARCH = {
+@@ -532,6 +598,9 @@ DEBIAN_PACKAGES_ARCH = {
      "mips64el": [
          "valgrind",
      ],
@@ -572,7 +573,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
  }
  
  
-@@ -729,7 +797,12 @@ def hacks_and_patches(install_root: str, script_dir: str, arch: str) -> None:
+@@ -729,7 +798,12 @@ def hacks_and_patches(install_root: str, script_dir: str, arch: str) -> None:
      # __GLIBC_MINOR__ is used as a feature test macro. Replace it with the
      # earliest supported version of glibc (2.26).
      features_h = os.path.join(install_root, "usr", "include", "features.h")
@@ -586,7 +587,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
  
      # fcntl64() was introduced in glibc 2.28. Make sure to use fcntl() instead.
      fcntl_h = os.path.join(install_root, "usr", "include", "fcntl.h")
-@@ -741,7 +814,7 @@ def hacks_and_patches(install_root: str, script_dir: str, arch: str) -> None:
+@@ -741,7 +815,7 @@ def hacks_and_patches(install_root: str, script_dir: str, arch: str) -> None:
  
      # Do not use pthread_cond_clockwait as it was introduced in glibc 2.30.
      cppconfig_h = os.path.join(install_root, "usr", "include", TRIPLES[arch],
@@ -595,7 +596,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
      replace_in_file(cppconfig_h,
                      r"(#define\s+_GLIBCXX_USE_PTHREAD_COND_CLOCKWAIT)",
                      r"// \1")
-@@ -761,10 +834,14 @@ def hacks_and_patches(install_root: str, script_dir: str, arch: str) -> None:
+@@ -761,10 +835,14 @@ def hacks_and_patches(install_root: str, script_dir: str, arch: str) -> None:
              shutil.move(os.path.join(triple_pkgconfig_dir, file),
                          pkgconfig_dir)
  
@@ -614,7 +615,7 @@ index 637ce2e9eb5a3..248d6ab787b69 100755
  
  
  def replace_in_file(file_path: str, search_pattern: str,
-@@ -858,11 +935,18 @@ def cleanup_jail_symlinks(install_root: str) -> None:
+@@ -858,11 +936,18 @@ def cleanup_jail_symlinks(install_root: str) -> None:
  
                  # Check if the symlink is absolute and points inside the
                  # install_root.
