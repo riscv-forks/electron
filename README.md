@@ -19,6 +19,8 @@ Branches with riscv64 support have a suffix of `-riscv`. e.g. `main-riscv`, `28-
 Prebuilt toolchains are available in GitHub Releases. They can also be built from source by corresponding scripts, e.g.
 `//tools/rust/build_rust.py`.
 
+**Note**: To build the sysroot, please checkout chromium 121.0.6167.90 source code and apply the patch. The sysroot creator patch is not maintained in electron patches.
+
 Toolchain issues:
 
 - https://github.com/llvm/llvm-project/issues/79944
