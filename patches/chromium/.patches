@@ -2,6 +2,7 @@ riscv-base.patch
 riscv-crashpad.patch
 0001-clang-add-riscv64-support-to-package-script.patch
 0001-rust-toolchain-fix-float-target-abi-for-riscv64.patch
+0001-rust-disable-i686.patch
 0001-extensions-common-api-runtime.json-riscv64-support.patch
 0001-disable-cpuinfo-build-for-riscv64.patch
 0002-Add-support-for-riscv64-linux.patch
