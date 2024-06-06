@@ -1,0 +1,47 @@
+From afe7514b5da7ced30557c33f865ddbea09028e7f Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Thu, 6 Jun 2024 06:10:39 +0200
+Subject: [PATCH] rust: disable i686
+
+Fails to build on bookworm
+---
+ tools/rust/build_rust.py | 16 +---------------
+ 1 file changed, 1 insertion(+), 15 deletions(-)
+
+diff --git a/tools/rust/build_rust.py b/tools/rust/build_rust.py
+index 4160672118645..f09d8188cb302 100755
+--- a/tools/rust/build_rust.py
++++ b/tools/rust/build_rust.py
+@@ -571,7 +571,7 @@ def RustTargetTriple(build_mac_arm=False, target_x86=False):
+             return 'x86_64-apple-darwin'
+     elif sys.platform == 'win32':
+         if target_x86:
+-            return 'i686-pc-windows-msvc'
++            return 'g686-pc-windows-msvc'
+         else:
+             return 'x86_64-pc-windows-msvc'
+     else:
+@@ -834,20 +834,6 @@ def main():
+             '--target',
+             building_for_host_triple
+         ])
+-    elif sys.platform.startswith('linux'):
+-        # We have Linux x86 machines, and they need the prebuilt stdlib to be
+-        # available for them in the same package.
+-        #
+-        # TODO(crbug.com/1448334): or sys.platform == 'win32':
+-        # Windows x64 targeting x86 uses x86 as the host toolchain too in our
+-        # GN rules, so we need the stdlib to be available for x86.
+-        x86_target_triple = RustTargetTriple(target_x86=True)
+-        xpy_args.extend([
+-            # The compiler will build stuff for the host, and
+-            # the compiler can also build stuff for x86 targets.
+-            '--target',
+-            f'{building_on_host_triple},{x86_target_triple}'
+-        ])
+ 
+     if not args.skip_clean:
+         print('Cleaning build artifacts...')
+-- 
+2.39.2
+
