@@ -1,0 +1,84 @@
+From 968577d441c6dd97352df4a1bd416354962c6212 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Thu, 6 Jun 2024 17:09:55 +0200
+Subject: [PATCH] Disable rvv due to clang < 17
+
+---
+ chromium/config/Chrome/linux/riscv64/config.h   | 2 +-
+ chromium/config/ChromeOS/linux/riscv64/config.h | 2 +-
+ chromium/config/Chromium/linux/riscv64/config.h | 2 +-
+ ffmpeg_generated.gni                            | 5 -----
+ 4 files changed, 3 insertions(+), 8 deletions(-)
+
+diff --git a/chromium/config/Chrome/linux/riscv64/config.h b/chromium/config/Chrome/linux/riscv64/config.h
+index 08c2dcf29d..9abb088411 100644
+--- a/chromium/config/Chrome/linux/riscv64/config.h
++++ b/chromium/config/Chrome/linux/riscv64/config.h
+@@ -57,7 +57,7 @@
+ #define HAVE_POWER8 0
+ #define HAVE_PPC4XX 0
+ #define HAVE_VSX 0
+-#define HAVE_RVV 1
++#define HAVE_RVV 0
+ #define HAVE_AESNI 0
+ #define HAVE_AMD3DNOW 0
+ #define HAVE_AMD3DNOWEXT 0
+diff --git a/chromium/config/ChromeOS/linux/riscv64/config.h b/chromium/config/ChromeOS/linux/riscv64/config.h
+index bac3fc74ed..01122fe6c7 100644
+--- a/chromium/config/ChromeOS/linux/riscv64/config.h
++++ b/chromium/config/ChromeOS/linux/riscv64/config.h
+@@ -57,7 +57,7 @@
+ #define HAVE_POWER8 0
+ #define HAVE_PPC4XX 0
+ #define HAVE_VSX 0
+-#define HAVE_RVV 1
++#define HAVE_RVV 0
+ #define HAVE_AESNI 0
+ #define HAVE_AMD3DNOW 0
+ #define HAVE_AMD3DNOWEXT 0
+diff --git a/chromium/config/Chromium/linux/riscv64/config.h b/chromium/config/Chromium/linux/riscv64/config.h
+index 348e82d5ee..e2b17b3493 100644
+--- a/chromium/config/Chromium/linux/riscv64/config.h
++++ b/chromium/config/Chromium/linux/riscv64/config.h
+@@ -57,7 +57,7 @@
+ #define HAVE_POWER8 0
+ #define HAVE_PPC4XX 0
+ #define HAVE_VSX 0
+-#define HAVE_RVV 1
++#define HAVE_RVV 0
+ #define HAVE_AESNI 0
+ #define HAVE_AMD3DNOW 0
+ #define HAVE_AMD3DNOWEXT 0
+diff --git a/ffmpeg_generated.gni b/ffmpeg_generated.gni
+index ac058600e9..07d9afb5bc 100644
+--- a/ffmpeg_generated.gni
++++ b/ffmpeg_generated.gni
+@@ -399,9 +399,6 @@ if (use_linux_config && current_cpu == "riscv64") {
+     "libavutil/riscv/float_dsp_init.c",
+   ]
+   ffmpeg_gas_sources += [
+-    "libavcodec/riscv/vorbisdsp_rvv.S",
+-    "libavutil/riscv/fixed_dsp_rvv.S",
+-    "libavutil/riscv/float_dsp_rvv.S",
+   ]
+ }
+ 
+@@ -410,7 +407,6 @@ if ((use_linux_config && current_cpu == "riscv64" && ffmpeg_branding == "Chrome"
+     "libavcodec/riscv/aacpsdsp_init.c",
+   ]
+   ffmpeg_gas_sources += [
+-    "libavcodec/riscv/aacpsdsp_rvv.S",
+   ]
+ }
+ 
+@@ -419,7 +415,6 @@ if (use_linux_config && current_cpu == "riscv64" && ffmpeg_branding == "ChromeOS
+     "libavcodec/riscv/idctdsp_init.c",
+   ]
+   ffmpeg_gas_sources += [
+-    "libavcodec/riscv/idctdsp_rvv.S",
+   ]
+ }
+ 
+-- 
+2.39.2
+
