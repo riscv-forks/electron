@@ -1,4 +1,4 @@
-From bbab7552789027cd3cfc27b18a2d50f81798c37a Mon Sep 17 00:00:00 2001
+From a7f0e9ed95b9c163b13db7598b6a67db7c099955 Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 09:19:00 +0800
 Subject: [PATCH] clang toolchain: riscv64 support
@@ -7,28 +7,14 @@ Patch-Dir: src/electron/patches/chromium
 Patch-Filename: 0007-clang-toolchain-riscv64-support.patch
 Patch-Filename: 0007-clang-toolchain-riscv64-support.patch
 ---
- build/config/clang/BUILD.gn  |  2 ++
  tools/clang/scripts/build.py | 12 ++++++++++++
- 2 files changed, 14 insertions(+)
+ 1 file changed, 12 insertions(+)
 
-diff --git a/build/config/clang/BUILD.gn b/build/config/clang/BUILD.gn
-index 4bbded9843333..e55f25c429414 100644
---- a/build/config/clang/BUILD.gn
-+++ b/build/config/clang/BUILD.gn
-@@ -151,6 +151,8 @@ template("clang_lib") {
-           _dir = "armv7-unknown-linux-gnueabihf"
-         } else if (current_cpu == "arm64") {
-           _dir = "aarch64-unknown-linux-gnu"
-+        } else if (current_cpu == "riscv64") {
-+          _dir = "riscv64-unknown-linux-gnu"
-         } else {
-           assert(false)  # Unhandled cpu type
-         }
 diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
-index b7ee510202f6b..1acb1d81cd103 100755
+index bed534ad2df5d..2a4a42ed15ad1 100755
 --- a/tools/clang/scripts/build.py
 +++ b/tools/clang/scripts/build.py
-@@ -824,6 +824,11 @@ def main():
+@@ -805,6 +805,11 @@ def main():
      U = toolchain_bucket + toolchain_hash + '/' + toolchain_name + '.tar.xz'
      sysroot_arm64 = os.path.join(LLVM_BUILD_TOOLS_DIR, toolchain_name)
      DownloadAndUnpack(U, sysroot_arm64)
@@ -40,7 +26,7 @@ index b7ee510202f6b..1acb1d81cd103 100755
  
      # Add the sysroot to base_cmake_args.
      if platform.machine() == 'aarch64':
-@@ -1126,6 +1131,13 @@ def main():
+@@ -1102,6 +1107,13 @@ def main():
              # Can't run tests on x86 host.
              'LLVM_INCLUDE_TESTS=OFF',
          ]))
@@ -52,8 +38,8 @@ index b7ee510202f6b..1acb1d81cd103 100755
 +            'LLVM_INCLUDE_TESTS=OFF',
 +        ]))
    elif sys.platform == 'win32':
-     sysroot = os.path.dirname(os.path.dirname(GetWinSDKDir()))
      runtimes_triples_args.append(
+         ('i386-pc-windows-msvc',
 -- 
 2.39.2
 
