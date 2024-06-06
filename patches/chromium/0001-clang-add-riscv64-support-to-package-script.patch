@@ -1,4 +1,4 @@
-From a762ff58032ba8955effab23bde54adaa15f0e72 Mon Sep 17 00:00:00 2001
+From f2d372d0c68c0686a967ce4d29d377e99289ba57 Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 12:45:33 +0100
 Subject: [PATCH] clang: add riscv64 support to package script
@@ -10,7 +10,7 @@ Patch-Filename: 0001-clang-add-riscv64-support-to-package-script.patch
  1 file changed, 14 insertions(+), 44 deletions(-)
 
 diff --git a/tools/clang/scripts/package.py b/tools/clang/scripts/package.py
-index 00858cc30e9d0..49b75a089d817 100755
+index 4fc4cf9da5a57..2bdf94cb43b0e 100755
 --- a/tools/clang/scripts/package.py
 +++ b/tools/clang/scripts/package.py
 @@ -243,7 +243,7 @@ def main():
@@ -48,7 +48,7 @@ index 00858cc30e9d0..49b75a089d817 100755
    if sys.platform == 'darwin':
      want.extend([
        # AddressSanitizer runtime.
-@@ -349,33 +333,25 @@ def main():
+@@ -349,32 +333,24 @@ def main():
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a.syms',
@@ -79,16 +79,15 @@ index 00858cc30e9d0..49b75a089d817 100755
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan_cxx.a',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.asan_cxx.a.syms',
  
-         # Builtins for Linux and Lacros.
+         # Builtins for Lacros (and potentially Linux, but not used there atm).
          'lib/clang/$V/lib/aarch64-unknown-linux-gnu/libclang_rt.builtins.a',
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/libclang_rt.builtins.a',
-         'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.builtins.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.builtins.a',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/libclang_rt.builtins.a',
  
          # crtstart/crtend for Linux and Lacros.
          'lib/clang/$V/lib/aarch64-unknown-linux-gnu/clang_rt.crtbegin.o',
-@@ -384,10 +360,8 @@ def main():
+@@ -383,10 +359,8 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/clang_rt.crtend.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtbegin.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtend.o',
@@ -101,7 +100,7 @@ index 00858cc30e9d0..49b75a089d817 100755
  
          # MemorySanitizer C runtime (pure C won't link with *_cxx).
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.msan.a',
-@@ -402,10 +376,7 @@ def main():
+@@ -401,10 +375,7 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/libclang_rt.profile.a',
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.profile.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.profile.a',
@@ -113,7 +112,7 @@ index 00858cc30e9d0..49b75a089d817 100755
  
          # ThreadSanitizer C runtime (pure C won't link with *_cxx).
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan.a',
-@@ -419,16 +390,15 @@ def main():
+@@ -418,16 +389,15 @@ def main():
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a.syms',
