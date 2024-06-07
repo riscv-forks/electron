@@ -1,0 +1,26 @@
+From 097d34a82be63992b9d872117044974c7e7e8b89 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Fri, 7 Jun 2024 04:17:30 +0200
+Subject: [PATCH] Disable native sysroot when building clang
+
+It fails
+---
+ tools/clang/scripts/build.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
+index ea84377321c7c..418b2ce40e492 100755
+--- a/tools/clang/scripts/build.py
++++ b/tools/clang/scripts/build.py
+@@ -809,7 +809,7 @@ def main():
+       base_cmake_args.append('-DCMAKE_SYSROOT=' + sysroot_arm64)
+     else:
+       # amd64 is the default toolchain.
+-      base_cmake_args.append('-DCMAKE_SYSROOT=' + sysroot_amd64)
++      pass # base_cmake_args.append('-DCMAKE_SYSROOT=' + sysroot_amd64)
+ 
+   if sys.platform == 'win32':
+     AddGnuWinToPath()
+-- 
+2.39.2
+
