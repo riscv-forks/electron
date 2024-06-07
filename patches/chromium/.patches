@@ -10,6 +10,10 @@ riscv-crashpad.patch
 0006-abseil-cpp-fix-signedness-conversion.patch
 0007-clang-toolchain-riscv64-support.patch
 0008-sysroot-riscv64-support.patch
+0001-Disable-native-sysroot-when-building-clang.patch
+0001-Don-t-use-bundled-gcc-toolchain.patch
+0001-rust-don-t-fallback.patch
+0001-libgav1-add-riscv-support.patch
 build_gn.patch
 dcheck.patch
 accelerator.patch

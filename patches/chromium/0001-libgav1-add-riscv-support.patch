@@ -1,0 +1,23 @@
+From 96d2eada34845ee828c15f8879e076d911a8b9b9 Mon Sep 17 00:00:00 2001
+From: imported_from_diff <unknown@example.com>
+Date: Fri, 7 Jun 2024 08:57:22 +0200
+Subject: [PATCH] libgav1: add riscv support
+
+---
+ third_party/libgav1/options.gni | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/third_party/libgav1/options.gni b/third_party/libgav1/options.gni
+index 0aab011ea82ac..77d071f421cf8 100644
+--- a/third_party/libgav1/options.gni
++++ b/third_party/libgav1/options.gni
+@@ -9,5 +9,5 @@ declare_args() {
+   use_libgav1_parser =
+       (is_chromeos || is_linux || is_win) &&
+       (target_cpu == "x86" || target_cpu == "x64" || target_cpu == "arm" ||
+-       target_cpu == "arm64" || target_cpu == "ppc64")
++       target_cpu == "arm64" || target_cpu == "ppc64" || target_cpu == "riscv64")
+ }
+-- 
+2.39.2
+

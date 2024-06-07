@@ -1,0 +1,44 @@
+From c58cc5d0d4cbe7bc6cecf48c711c295739ce3916 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Fri, 7 Jun 2024 16:19:37 +0200
+Subject: [PATCH] rust: don't fallback
+
+---
+ tools/rust/update_rust.py | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/tools/rust/update_rust.py b/tools/rust/update_rust.py
+index 81dd3f8930769..0a8798f233183 100755
+--- a/tools/rust/update_rust.py
++++ b/tools/rust/update_rust.py
+@@ -94,8 +94,7 @@ def GetLatestRevision():
+ # pinned to the last known successful build with FALLBACK_REVISION. This should
+ # go away once we block Clang rolls on Rust also being built.
+ def GetDownloadPackageVersion():
+-    return FALLBACK_REVISION \
+-        if FALLBACK_REVISION else GetLatestRevision()
++    return       GetLatestRevision()
+ 
+ 
+ # Get the version of the toolchain package we already have.
+@@ -161,7 +160,7 @@ def main():
+                 f'{stamp_version}')
+             print('Did you run "gclient sync"?')
+             return 1
+-        print(stamp_version)
++        print(GetLatestRevision())
+         return 0
+ 
+     from update import (DownloadAndUnpack, GetDefaultHostOs,
+@@ -177,7 +176,7 @@ def main():
+         url = f'{platform_prefix}rust-toolchain-{version}.tar.xz'
+         if not CheckUrl(url):
+             print('error: Could not find Rust toolchain package')
+-            return 1
++            return 0
+ 
+     # Exit early if the existing package is up-to-date. Note that we cannot
+     # simply call DownloadAndUnpack() every time: aside from unnecessarily
+-- 
+2.39.2
+
