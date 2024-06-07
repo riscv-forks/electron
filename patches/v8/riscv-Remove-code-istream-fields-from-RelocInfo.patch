@@ -1,0 +1,122 @@
+From a99836832091b9037372050ddf822b426b500d30 Mon Sep 17 00:00:00 2001
+From: QiuJi <qiuji@iscas.ac.cn>
+Date: Tue, 18 Apr 2023 10:12:38 +0800
+Subject: [PATCH] [riscv] Remove code/istream fields from RelocInfo
+
+port commit 9f4bea8e781260e7b7a1e3c8ef6598cb52dc1dd4
+
+Bug: v8:13789
+
+Also, fix UNREACHABLE in instruction selector
+
+port commit a3afc05f27a307366ebf2a8c063cb75bc4262383
+
+Bug: v8:13700
+
+Change-Id: I44627c43a1961f823401c94c6633c0045fdca5c1
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/4431916
+Auto-Submit: Ji Qiu <qiuji@iscas.ac.cn>
+Commit-Queue: Yahan Lu <yahan@iscas.ac.cn>
+Reviewed-by: Yahan Lu <yahan@iscas.ac.cn>
+Cr-Commit-Position: refs/heads/main@{#87129}
+---
+
+diff --git a/src/codegen/riscv/assembler-riscv-inl.h b/src/codegen/riscv/assembler-riscv-inl.h
+index 55f191e..773dc56 100644
+--- a/src/codegen/riscv/assembler-riscv-inl.h
++++ b/src/codegen/riscv/assembler-riscv-inl.h
+@@ -186,8 +186,7 @@
+   }
+ }
+ 
+-void RelocInfo::set_target_object(Heap* heap, HeapObject target,
+-                                  WriteBarrierMode write_barrier_mode,
++void RelocInfo::set_target_object(HeapObject target,
+                                   ICacheFlushMode icache_flush_mode) {
+   DCHECK(IsCodeTarget(rmode_) || IsEmbeddedObjectMode(rmode_));
+   if (IsCompressedEmbeddedObject(rmode_)) {
+@@ -200,10 +199,6 @@
+     Assembler::set_target_address_at(pc_, constant_pool_, target.ptr(),
+                                      icache_flush_mode);
+   }
+-  if (write_barrier_mode == UPDATE_WRITE_BARRIER &&
+-      !instruction_stream().is_null() && !v8_flags.disable_write_barriers) {
+-    WriteBarrierForCode(instruction_stream(), this, target);
+-  }
+ }
+ 
+ Address RelocInfo::target_external_reference() {
+diff --git a/src/codegen/riscv/assembler-riscv.cc b/src/codegen/riscv/assembler-riscv.cc
+index b6844a6..a9bcf07 100644
+--- a/src/codegen/riscv/assembler-riscv.cc
++++ b/src/codegen/riscv/assembler-riscv.cc
+@@ -1316,21 +1316,13 @@
+   EmitHelper(data);
+ }
+ 
+-void Assembler::dd(uint32_t data, RelocInfo::Mode rmode) {
+-  if (!RelocInfo::IsNoInfo(rmode)) {
+-    DCHECK(RelocInfo::IsLiteralConstant(rmode));
+-    RecordRelocInfo(rmode);
+-  }
++void Assembler::dd(uint32_t data) {
+   if (!is_buffer_growth_blocked()) CheckBuffer();
+   DEBUG_PRINTF("%p(%x): constant 0x%x\n", pc_, pc_offset(), data);
+   EmitHelper(data);
+ }
+ 
+-void Assembler::dq(uint64_t data, RelocInfo::Mode rmode) {
+-  if (!RelocInfo::IsNoInfo(rmode)) {
+-    DCHECK(RelocInfo::IsLiteralConstant(rmode));
+-    RecordRelocInfo(rmode);
+-  }
++void Assembler::dq(uint64_t data) {
+   if (!is_buffer_growth_blocked()) CheckBuffer();
+   EmitHelper(data);
+ }
+@@ -1351,8 +1343,7 @@
+ void Assembler::RecordRelocInfo(RelocInfo::Mode rmode, intptr_t data) {
+   if (!ShouldRecordRelocInfo(rmode)) return;
+   // We do not try to reuse pool constants.
+-  RelocInfo rinfo(reinterpret_cast<Address>(pc_), rmode, data, Code(),
+-                  InstructionStream());
++  RelocInfo rinfo(reinterpret_cast<Address>(pc_), rmode, data);
+   DCHECK_GE(buffer_space(), kMaxRelocSize);  // Too late to grow buffer here.
+   reloc_info_writer.Write(&rinfo);
+ }
+diff --git a/src/codegen/riscv/assembler-riscv.h b/src/codegen/riscv/assembler-riscv.h
+index ed222b5..0dbeae0 100644
+--- a/src/codegen/riscv/assembler-riscv.h
++++ b/src/codegen/riscv/assembler-riscv.h
+@@ -455,11 +455,9 @@
+   // Writes a single byte or word of data in the code stream.  Used for
+   // inline tables, e.g., jump-tables.
+   void db(uint8_t data);
+-  void dd(uint32_t data, RelocInfo::Mode rmode = RelocInfo::NO_INFO);
+-  void dq(uint64_t data, RelocInfo::Mode rmode = RelocInfo::NO_INFO);
+-  void dp(uintptr_t data, RelocInfo::Mode rmode = RelocInfo::NO_INFO) {
+-    dq(data, rmode);
+-  }
++  void dd(uint32_t data);
++  void dq(uint64_t data);
++  void dp(uintptr_t data) { dq(data); }
+   void dd(Label* label);
+ 
+   Instruction* pc() const { return reinterpret_cast<Instruction*>(pc_); }
+diff --git a/src/compiler/backend/riscv/instruction-selector-riscv64.cc b/src/compiler/backend/riscv/instruction-selector-riscv64.cc
+index 1308316..ba6c851 100644
+--- a/src/compiler/backend/riscv/instruction-selector-riscv64.cc
++++ b/src/compiler/backend/riscv/instruction-selector-riscv64.cc
+@@ -1106,6 +1106,12 @@
+         opcode = load_rep.IsUnsigned() ? kRiscvLhu : kRiscvLh;
+         break;
+       case MachineRepresentation::kWord32:
++      case MachineRepresentation::kWord64:
++        // Since BitcastElider may remove nodes of
++        // IrOpcode::kTruncateInt64ToInt32 and directly use the inputs, values
++        // with kWord64 can also reach this line.
++        // For RV64, the lw loads a 32 bit value from memory and sign-extend it
++        // to 64 bits before storing it in rd register
+         opcode = kRiscvLw;
+         break;
+       default:

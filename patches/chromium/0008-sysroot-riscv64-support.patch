@@ -1,4 +1,4 @@
-From 09add7a42a094dca95cbba8d0fa5c7a2ba07d5ec Mon Sep 17 00:00:00 2001
+From 2c22bc7381470bb435ff132c48a6ad5d60c812fc Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 13:08:03 +0100
 Subject: [PATCH] sysroot: riscv64 support
@@ -11,7 +11,7 @@ Patch-Filename: 0008-sysroot-riscv64-support.patch
  3 files changed, 16 insertions(+), 5 deletions(-)
 
 diff --git a/build/config/sysroot.gni b/build/config/sysroot.gni
-index 0d313fe7f5c68..f4c11fc0afe13 100644
+index dea380727e732..ba8ee11e69aea 100644
 --- a/build/config/sysroot.gni
 +++ b/build/config/sysroot.gni
 @@ -21,7 +21,7 @@ declare_args() {
@@ -24,7 +24,7 @@ index 0d313fe7f5c68..f4c11fc0afe13 100644
  
  if (sysroot == "") {
 @@ -48,6 +48,8 @@ if (sysroot == "") {
-       sysroot = "$target_sysroot_dir/debian_bullseye_armhf-sysroot"
+       sysroot = "$target_sysroot_dir/debian_bullseye_arm-sysroot"
      } else if (current_cpu == "arm64") {
        sysroot = "$target_sysroot_dir/debian_bullseye_arm64-sysroot"
 +    } else if (current_cpu == "riscv64") {
@@ -33,19 +33,19 @@ index 0d313fe7f5c68..f4c11fc0afe13 100644
        assert(false, "No linux sysroot for cpu: $target_cpu")
      }
 diff --git a/build/linux/sysroot_scripts/install-sysroot.py b/build/linux/sysroot_scripts/install-sysroot.py
-index 67d52b47a7531..3dfabe62e5a8a 100755
+index 42842a184deb1..5ece1ac23768b 100755
 --- a/build/linux/sysroot_scripts/install-sysroot.py
 +++ b/build/linux/sysroot_scripts/install-sysroot.py
-@@ -37,7 +37,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+@@ -44,7 +44,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
  URL_PREFIX = 'https://commondatastorage.googleapis.com'
  URL_PATH = 'chrome-linux-sysroot/toolchain'
  
--VALID_ARCHS = ('amd64', 'i386', 'armhf', 'arm64', 'armel', 'mipsel', 'mips64el')
+-VALID_ARCHS = ('arm', 'arm64', 'i386', 'amd64', 'mips', 'mips64el')
 +VALID_ARCHS = ('amd64', 'i386', 'armhf', 'arm64', 'armel', 'mipsel', 'mips64el', 'riscv64')
  
  ARCH_TRANSLATIONS = {
      'x64': 'amd64',
-@@ -79,16 +79,19 @@ def main(args):
+@@ -85,16 +85,19 @@ def main(args):
  
    if options.print_key:
      arch = options.print_key
@@ -69,13 +69,13 @@ index 67d52b47a7531..3dfabe62e5a8a 100755
      print('You much specify one of the options.')
      return 1
 diff --git a/build/linux/sysroot_scripts/sysroots.json b/build/linux/sysroot_scripts/sysroots.json
-index 59f5ec52489c9..96d0d30492da0 100644
+index 8b56c81e3f287..f7ca0ce443040 100644
 --- a/build/linux/sysroot_scripts/sysroots.json
 +++ b/build/linux/sysroot_scripts/sysroots.json
 @@ -40,5 +40,11 @@
-         "Sha1Sum": "fed66c435eeb0bd71e9394a0fb0c4e078d90ea50",
-         "SysrootDir": "debian_bullseye_mipsel-sysroot",
-         "Tarball": "debian_bullseye_mips_sysroot.tar.xz"
+         "Sha1Sum": "038b7b37c597647b218019f8d655871068d82029",
+         "SysrootDir": "debian_bullseye_mips64el-sysroot",
+         "Tarball": "debian_bullseye_mips64el_sysroot.tar.xz"
 +    },
 +    "sid_riscv64": {
 +        "Key": "20240131T153825Z-1",

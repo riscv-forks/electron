@@ -1,0 +1,26 @@
+From d4c53cb01c2f77cc4de281088f7c28254bf3746c Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Wed, 9 Aug 2023 15:42:58 +0800
+Subject: [PATCH] partition_alloc.gni: riscv64 support
+
+---
+ base/allocator/partition_allocator/partition_alloc.gni | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/base/allocator/partition_allocator/partition_alloc.gni b/base/allocator/partition_allocator/partition_alloc.gni
+index 608568190a296..c41ecaecb7703 100644
+--- a/base/allocator/partition_allocator/partition_alloc.gni
++++ b/base/allocator/partition_allocator/partition_alloc.gni
+@@ -14,7 +14,8 @@ if (is_apple) {
+ if (is_nacl) {
+   # NaCl targets don't use 64-bit pointers.
+   has_64_bit_pointers = false
+-} else if (current_cpu == "x64" || current_cpu == "arm64") {
++} else if (current_cpu == "x64" || current_cpu == "arm64" ||
++           current_cpu == "loong64" || current_cpu == "riscv64") {
+   has_64_bit_pointers = true
+ } else if (current_cpu == "x86" || current_cpu == "arm") {
+   has_64_bit_pointers = false
+-- 
+2.39.2
+

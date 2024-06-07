@@ -1,19 +1,17 @@
-From f2d372d0c68c0686a967ce4d29d377e99289ba57 Mon Sep 17 00:00:00 2001
+From 7eed3ce9090414c4651ebccb5c071d6709652ad2 Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
-Date: Sat, 10 Feb 2024 12:45:33 +0100
+Date: Fri, 7 Jun 2024 03:40:21 +0200
 Subject: [PATCH] clang: add riscv64 support to package script
 
-And drop android and fuchsia build to reduce build time.
-Patch-Filename: 0001-clang-add-riscv64-support-to-package-script.patch
 ---
- tools/clang/scripts/package.py | 58 ++++++++--------------------------
- 1 file changed, 14 insertions(+), 44 deletions(-)
+ tools/clang/scripts/package.py | 57 +++++++++-------------------------
+ 1 file changed, 14 insertions(+), 43 deletions(-)
 
 diff --git a/tools/clang/scripts/package.py b/tools/clang/scripts/package.py
-index 4fc4cf9da5a57..2bdf94cb43b0e 100755
+index 49410a8104436..cb43cd6bfe828 100755
 --- a/tools/clang/scripts/package.py
 +++ b/tools/clang/scripts/package.py
-@@ -243,7 +243,7 @@ def main():
+@@ -233,7 +233,7 @@ def main():
      build_cmd = [
          sys.executable,
          os.path.join(THIS_DIR, 'build.py'), '--bootstrap', '--disable-asserts',
@@ -22,7 +20,7 @@ index 4fc4cf9da5a57..2bdf94cb43b0e 100755
      ]
      if args.build_mac_arm:
        build_cmd.append('--build-mac-arm')
-@@ -293,25 +293,9 @@ def main():
+@@ -283,25 +283,9 @@ def main():
          # llvm-ml for Windows cross builds.
          'bin/llvm-ml',
  
@@ -48,7 +46,7 @@ index 4fc4cf9da5a57..2bdf94cb43b0e 100755
    if sys.platform == 'darwin':
      want.extend([
        # AddressSanitizer runtime.
-@@ -349,32 +333,24 @@ def main():
+@@ -339,32 +323,24 @@ def main():
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a.syms',
@@ -87,20 +85,19 @@ index 4fc4cf9da5a57..2bdf94cb43b0e 100755
  
          # crtstart/crtend for Linux and Lacros.
          'lib/clang/$V/lib/aarch64-unknown-linux-gnu/clang_rt.crtbegin.o',
-@@ -383,10 +359,8 @@ def main():
+@@ -373,9 +349,8 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/clang_rt.crtend.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtbegin.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtend.o',
 -
 -        # HWASAN Android runtime.
 -        'lib/clang/$V/lib/linux/libclang_rt.hwasan-aarch64-android.so',
--        'lib/clang/$V/lib/linux/libclang_rt.hwasan-preinit-aarch64-android.a',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/clang_rt.crtbegin.o',
 +        'lib/clang/$V/lib/riscv64-unknown-linux-gnu/clang_rt.crtend.o',
  
          # MemorySanitizer C runtime (pure C won't link with *_cxx).
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.msan.a',
-@@ -401,10 +375,7 @@ def main():
+@@ -390,10 +365,7 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/libclang_rt.profile.a',
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.profile.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.profile.a',
@@ -112,7 +109,7 @@ index 4fc4cf9da5a57..2bdf94cb43b0e 100755
  
          # ThreadSanitizer C runtime (pure C won't link with *_cxx).
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.tsan.a',
-@@ -418,16 +389,15 @@ def main():
+@@ -407,16 +379,15 @@ def main():
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.ubsan_standalone.a.syms',
