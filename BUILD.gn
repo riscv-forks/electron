@@ -512,7 +512,6 @@ source_set("electron_lib") {
     ]
   }
 
-  configs += [ "//electron/build/config:mas_build" ]
 
   sources = filenames.lib_sources
   if (is_win) {
