@@ -3,8 +3,6 @@
 
   "src/electron/patches/angle": "src/third_party/angle",
 
-  "src/electron/patches/libyuv": "src/third_party/libyuv",
-
   "src/electron/patches/chromium": "src",
 
   "src/electron/patches/boringssl": "src/third_party/boringssl/src",
