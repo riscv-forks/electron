@@ -24,6 +24,7 @@
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
 #include "components/os_crypt/sync/key_storage_config_linux.h"
+#include "components/embedder_support/origin_trials/origin_trials_settings_storage.h"
 #include "components/os_crypt/sync/os_crypt.h"
 #include "content/browser/browser_main_loop.h"  // nogncheck
 #include "content/public/browser/browser_child_process_host_delegate.h"
@@ -190,6 +191,17 @@ void UpdateDarkThemeSetting() {
 }
 #endif
 
+// A fake BrowserProcess object that used to feed the source code from chrome.
+class FakeBrowserProcessImpl : public BrowserProcessImpl {
+ public:
+  embedder_support::OriginTrialsSettingsStorage*
+  GetOriginTrialsSettingsStorage() override {
+    return &origin_trials_settings_storage_;
+  }
+
+ private:
+  embedder_support::OriginTrialsSettingsStorage origin_trials_settings_storage_;
+};
 }  // namespace
 
 #if BUILDFLAG(IS_LINUX)

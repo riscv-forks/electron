@@ -1,27 +1,12 @@
-From b4da329af27c000e5ea0b620bada28c71453a704 Mon Sep 17 00:00:00 2001
+From 3b6cbb532c403210a925174f904aad3bace01116 Mon Sep 17 00:00:00 2001
 From: imported_from_diff <unknown@example.com>
 Date: Fri, 7 Jun 2024 08:49:25 +0200
 Subject: [PATCH] angle: add riscv64 support
 
 ---
- gni/angle.gni         | 3 ++-
  src/common/platform.h | 2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/gni/angle.gni b/gni/angle.gni
-index 193316c7e..a8dd13bae 100644
---- a/gni/angle.gni
-+++ b/gni/angle.gni
-@@ -104,7 +104,8 @@ declare_args() {
- 
-   if (current_cpu == "arm64" || current_cpu == "x64" ||
-       current_cpu == "mips64el" || current_cpu == "s390x" ||
--      current_cpu == "ppc64" || current_cpu == "loong64") {
-+      current_cpu == "ppc64" || current_cpu == "loong64" ||
-+      current_cpu == "riscv64") {
-     angle_64bit_current_cpu = true
-   } else if (current_cpu == "arm" || current_cpu == "x86" ||
-              current_cpu == "mipsel" || current_cpu == "s390" ||
 diff --git a/src/common/platform.h b/src/common/platform.h
 index e31ac1481..b341775ab 100644
 --- a/src/common/platform.h
