@@ -191,11 +191,6 @@ network::NetworkQualityTracker* BrowserProcessImpl::network_quality_tracker() {
   return nullptr;
 }
 
-embedder_support::OriginTrialsSettingsStorage*
-BrowserProcessImpl::GetOriginTrialsSettingsStorage() {
-  return &origin_trials_settings_storage_;
-}
-
 policy::ChromeBrowserPolicyConnector*
 BrowserProcessImpl::browser_policy_connector() {
   return nullptr;
