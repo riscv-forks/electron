@@ -1,0 +1,61 @@
+From fe6c9e4f51bf6c01bbf72ffd02b86fb157cc6c9b Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sun, 9 Jun 2024 18:10:04 +0200
+Subject: [PATCH] avoid cpu probe on every li_ptr call
+
+cpu probing is not a cheap thing to do in li_ptr. This patch moves the
+cpu probing code into the constructor of Assembler. It fixes performance
+regression: https://github.com/riscv-forks/electron/issues/1
+---
+ src/codegen/riscv/assembler-riscv.cc | 6 ++++--
+ src/codegen/riscv/assembler-riscv.h  | 3 +++
+ 2 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/src/codegen/riscv/assembler-riscv.cc b/src/codegen/riscv/assembler-riscv.cc
+index db5b12139e6..43a6d4bf861 100644
+--- a/src/codegen/riscv/assembler-riscv.cc
++++ b/src/codegen/riscv/assembler-riscv.cc
+@@ -219,6 +219,9 @@ Assembler::Assembler(const AssemblerOptions& options,
+   trampoline_emitted_ = v8_flags.force_long_branches;
+   unbound_labels_count_ = 0;
+   block_buffer_growth_ = false;
++
++  base::CPU cpu;
++  mmu_mode_ = cpu.riscv_mmu();
+ }
+ 
+ void Assembler::AbortedCodeGeneration() { constpool_.Clear(); }
+@@ -1065,8 +1068,7 @@ void Assembler::GeneralLi(Register rd, int64_t imm) {
+ }
+ 
+ void Assembler::li_ptr(Register rd, int64_t imm) {
+-  base::CPU cpu;
+-  if (cpu.riscv_mmu() != base::CPU::RV_MMU_MODE::kRiscvSV57) {
++  if (mmu_mode_ != base::CPU::RV_MMU_MODE::kRiscvSV57) {
+     // Initialize rd with an address
+     // Pointers are 48 bits
+     // 6 fixed instructions are generated
+diff --git a/src/codegen/riscv/assembler-riscv.h b/src/codegen/riscv/assembler-riscv.h
+index 4b97e74ab42..b8a24005da0 100644
+--- a/src/codegen/riscv/assembler-riscv.h
++++ b/src/codegen/riscv/assembler-riscv.h
+@@ -40,6 +40,7 @@
+ #include <memory>
+ #include <set>
+ 
++#include "src/base/cpu.h"
+ #include "src/codegen/assembler.h"
+ #include "src/codegen/constant-pool.h"
+ #include "src/codegen/constants-arch.h"
+@@ -692,6 +693,8 @@ class V8_EXPORT_PRIVATE Assembler : public AssemblerBase,
+   bool is_buffer_growth_blocked() const { return block_buffer_growth_; }
+ 
+  private:
++  // mmu mode
++  base::CPU::RV_MMU_MODE mmu_mode_;
+   // Avoid overflows for displacements etc.
+   static const int kMaximalBufferSize = 512 * MB;
+ 
+-- 
+2.39.2
+
