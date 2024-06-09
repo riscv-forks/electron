@@ -1,0 +1,218 @@
+From b9559635a1b9356523e1f866ed6e8fbf89cf789b Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sun, 9 Jun 2024 16:56:37 +0200
+Subject: [PATCH 3/3] Revert "[heap] Remove dead code from sweeper"
+
+This reverts commit 004ee17f86a3ef4d5527c3c79d85b384e90d354e.
+---
+ src/heap/mark-compact.cc |  6 ++--
+ src/heap/sweeper.cc      | 59 ++++++++++++++++++++++++++++++++++++----
+ src/heap/sweeper.h       | 46 +++++++++++++++++++++++++++++--
+ 3 files changed, 101 insertions(+), 10 deletions(-)
+
+diff --git a/src/heap/mark-compact.cc b/src/heap/mark-compact.cc
+index 183ddb46d8f..8e87535d280 100644
+--- a/src/heap/mark-compact.cc
++++ b/src/heap/mark-compact.cc
+@@ -386,7 +386,7 @@ void CollectorBase::StartSweepSpace(PagedSpace* space) {
+       unused_page_present = true;
+     }
+ 
+-    sweeper->AddPage(space->identity(), p);
++    sweeper->AddPage(space->identity(), p, Sweeper::REGULAR);
+     will_be_swept++;
+   }
+ 
+@@ -4569,7 +4569,7 @@ void MarkCompactCollector::Evacuate() {
+       if (p->IsFlagSet(Page::PAGE_NEW_OLD_PROMOTION)) {
+         p->ClearFlag(Page::PAGE_NEW_OLD_PROMOTION);
+         DCHECK_EQ(OLD_SPACE, p->owner_identity());
+-        sweeper()->AddPage(OLD_SPACE, p);
++        sweeper()->AddPage(OLD_SPACE, p, Sweeper::REGULAR);
+       } else if (v8_flags.minor_mc) {
+         // Sweep non-promoted pages to add them back to the free list.
+         DCHECK_EQ(NEW_SPACE, p->owner_identity());
+@@ -4597,7 +4597,7 @@ void MarkCompactCollector::Evacuate() {
+ 
+     for (Page* p : old_space_evacuation_pages_) {
+       if (p->IsFlagSet(Page::COMPACTION_WAS_ABORTED)) {
+-        sweeper()->AddPage(p->owner_identity(), p);
++        sweeper()->AddPage(p->owner_identity(), p, Sweeper::REGULAR);
+         p->ClearFlag(Page::COMPACTION_WAS_ABORTED);
+       }
+     }
+diff --git a/src/heap/sweeper.cc b/src/heap/sweeper.cc
+index 32c418a2635..a8fe4dbda3d 100644
+--- a/src/heap/sweeper.cc
++++ b/src/heap/sweeper.cc
+@@ -409,6 +409,47 @@ Sweeper::Sweeper(Heap* heap)
+ 
+ Sweeper::~Sweeper() = default;
+ 
++Sweeper::PauseScope::PauseScope(Sweeper* sweeper) : sweeper_(sweeper) {
++  DCHECK(!sweeper_->minor_sweeping_in_progress());
++  DCHECK(!sweeper_->minor_sweeping_state_.HasValidJob());
++
++  if (!sweeper_->major_sweeping_in_progress()) return;
++
++  sweeper_->major_sweeping_state_.StopConcurrentSweeping();
++}
++
++Sweeper::PauseScope::~PauseScope() {
++  if (!sweeper_->major_sweeping_in_progress()) return;
++
++  sweeper_->StartMajorSweeperTasks();
++}
++
++Sweeper::FilterSweepingPagesScope::FilterSweepingPagesScope(
++    Sweeper* sweeper, const PauseScope& pause_scope)
++    : sweeper_(sweeper),
++      major_sweeping_in_progress_(sweeper_->major_sweeping_in_progress()) {
++  // The PauseScope here only serves as a witness that concurrent sweeping has
++  // been paused.
++  USE(pause_scope);
++
++  if (!major_sweeping_in_progress_) return;
++
++  int old_space_index = GetSweepSpaceIndex(OLD_SPACE);
++  old_space_sweeping_list_ =
++      std::move(sweeper_->sweeping_list_[old_space_index]);
++  sweeper_->sweeping_list_[old_space_index].clear();
++}
++
++Sweeper::FilterSweepingPagesScope::~FilterSweepingPagesScope() {
++  DCHECK_EQ(major_sweeping_in_progress_,
++            sweeper_->major_sweeping_in_progress());
++  if (!major_sweeping_in_progress_) return;
++
++  sweeper_->sweeping_list_[GetSweepSpaceIndex(OLD_SPACE)] =
++      std::move(old_space_sweeping_list_);
++  // old_space_sweeping_list_ does not need to be cleared as we don't use it.
++}
++
+ void Sweeper::TearDown() {
+   minor_sweeping_state_.StopConcurrentSweeping();
+   major_sweeping_state_.StopConcurrentSweeping();
+@@ -1071,9 +1112,10 @@ bool Sweeper::TryRemovePromotedPageSafe(MemoryChunk* chunk) {
+   return true;
+ }
+ 
+-void Sweeper::AddPage(AllocationSpace space, Page* page) {
++void Sweeper::AddPage(AllocationSpace space, Page* page,
++                      Sweeper::AddPageMode mode) {
+   DCHECK_NE(NEW_SPACE, space);
+-  AddPageImpl(space, page);
++  AddPageImpl(space, page, mode);
+ }
+ 
+ void Sweeper::AddNewSpacePage(Page* page) {
+@@ -1081,7 +1123,7 @@ void Sweeper::AddNewSpacePage(Page* page) {
+   size_t live_bytes = marking_state_->live_bytes(page);
+   heap_->IncrementNewSpaceSurvivingObjectSize(live_bytes);
+   heap_->IncrementYoungSurvivorsCounter(live_bytes);
+-  AddPageImpl(NEW_SPACE, page);
++  AddPageImpl(NEW_SPACE, page, AddPageMode::REGULAR);
+ }
+ 
+ void Sweeper::AddPromotedPageForIteration(MemoryChunk* chunk) {
+@@ -1111,7 +1153,8 @@ void Sweeper::AddPromotedPageForIteration(MemoryChunk* chunk) {
+   promoted_pages_for_iteration_count_++;
+ }
+ 
+-void Sweeper::AddPageImpl(AllocationSpace space, Page* page) {
++void Sweeper::AddPageImpl(AllocationSpace space, Page* page,
++                          Sweeper::AddPageMode mode) {
+   // This assert only checks that the non_atomic version is only used on the
+   // main thread. It would not catch cases where main thread add a page
+   // non-atomically while concurrent jobs are adding pages atomically.
+@@ -1121,7 +1164,13 @@ void Sweeper::AddPageImpl(AllocationSpace space, Page* page) {
+                  !major_sweeping_state_.HasValidJob());
+   DCHECK_IMPLIES(v8_flags.concurrent_sweeping,
+                  !minor_sweeping_state_.HasValidJob());
+-  PrepareToBeSweptPage(space, page);
++  if (mode == Sweeper::REGULAR) {
++    PrepareToBeSweptPage(space, page);
++  } else {
++    // Page has been temporarily removed from the sweeper. Accounting already
++    // happened when the page was initially added, so it is skipped here.
++    DCHECK_EQ(Sweeper::READD_TEMPORARY_REMOVED_PAGE, mode);
++  }
+   DCHECK_EQ(Page::ConcurrentSweepingState::kPending,
+             page->concurrent_sweeping_state());
+   sweeping_list_[GetSweepSpaceIndex(space)].push_back(page);
+diff --git a/src/heap/sweeper.h b/src/heap/sweeper.h
+index 889a3c01c01..62da1b8e0f4 100644
+--- a/src/heap/sweeper.h
++++ b/src/heap/sweeper.h
+@@ -38,8 +38,50 @@ class Sweeper {
+   using SweepingList = std::vector<Page*>;
+   using SweptList = std::vector<Page*>;
+ 
++  enum FreeListRebuildingMode { REBUILD_FREE_LIST, IGNORE_FREE_LIST };
++  enum AddPageMode { REGULAR, READD_TEMPORARY_REMOVED_PAGE };
+   enum class SweepingMode { kEagerDuringGC, kLazyOrConcurrent };
+ 
++  // Pauses the sweeper tasks.
++  class V8_NODISCARD PauseScope final {
++   public:
++    explicit PauseScope(Sweeper* sweeper);
++    ~PauseScope();
++
++   private:
++    Sweeper* const sweeper_;
++  };
++
++  // Temporary filters old space sweeping lists. Requires the concurrent
++  // sweeper to be paused. Allows for pages to be added to the sweeper while
++  // in this scope. Note that the original list of sweeping pages is restored
++  // after exiting this scope.
++  class V8_NODISCARD FilterSweepingPagesScope final {
++   public:
++    FilterSweepingPagesScope(Sweeper* sweeper, const PauseScope& pause_scope);
++    ~FilterSweepingPagesScope();
++
++    template <typename Callback>
++    void FilterOldSpaceSweepingPages(Callback callback) {
++      if (!major_sweeping_in_progress_) return;
++
++      SweepingList* sweeper_list =
++          &sweeper_->sweeping_list_[GetSweepSpaceIndex(OLD_SPACE)];
++      // Iteration here is from most free space to least free space.
++      for (auto it = old_space_sweeping_list_.begin();
++           it != old_space_sweeping_list_.end(); it++) {
++        if (callback(*it)) {
++          sweeper_list->push_back(*it);
++        }
++      }
++    }
++
++   private:
++    Sweeper* const sweeper_;
++    SweepingList old_space_sweeping_list_;
++    bool major_sweeping_in_progress_;
++  };
++
+   // LocalSweeper holds local data structures required for sweeping and is used
+   // to initiate sweeping and promoted page iteration on multiple threads. Each
+   // thread should holds its own LocalSweeper. Once sweeping is done, all
+@@ -95,7 +137,7 @@ class Sweeper {
+ 
+   void TearDown();
+ 
+-  void AddPage(AllocationSpace space, Page* page);
++  void AddPage(AllocationSpace space, Page* page, AddPageMode mode);
+   void AddNewSpacePage(Page* page);
+   void AddPromotedPageForIteration(MemoryChunk* chunk);
+ 
+@@ -142,7 +184,7 @@ class Sweeper {
+ 
+   void RawIteratePromotedPageForRememberedSets(MemoryChunk* chunk);
+ 
+-  void AddPageImpl(AllocationSpace space, Page* page);
++  void AddPageImpl(AllocationSpace space, Page* page, AddPageMode mode);
+ 
+   class ConcurrentMajorSweeper;
+   class ConcurrentMinorSweeper;
+-- 
+2.39.2
+

@@ -1,0 +1,139 @@
+From 04cbf0d0259f16bed063cf854ca5f02d255328e1 Mon Sep 17 00:00:00 2001
+From: kxxt <rsworktech@outlook.com>
+Date: Sun, 9 Jun 2024 16:56:22 +0200
+Subject: [PATCH 2/3] Revert "[riscv] Implement probe mmu mode"
+
+This reverts commit f6d199165162c8bf6d97a84171695a17da2ecf64.
+---
+ src/base/cpu.cc                      | 13 ---------
+ src/base/cpu.h                       |  9 +------
+ src/codegen/riscv/assembler-riscv.cc | 40 +++++++++++-----------------
+ 3 files changed, 16 insertions(+), 46 deletions(-)
+
+diff --git a/src/base/cpu.cc b/src/base/cpu.cc
+index e63896bca53..fdef3c6695a 100644
+--- a/src/base/cpu.cc
++++ b/src/base/cpu.cc
+@@ -410,7 +410,6 @@ CPU::CPU()
+       has_non_stop_time_stamp_counter_(false),
+       is_running_in_vm_(false),
+       has_msa_(false),
+-      riscv_mmu_(RV_MMU_MODE::kRiscvSV48),
+       has_rvv_(false) {
+   memcpy(vendor_, "Unknown", 8);
+ 
+@@ -869,7 +868,6 @@ CPU::CPU()
+ #endif  // !USE_SIMULATOR
+ 
+ #elif V8_HOST_ARCH_RISCV64
+-#if V8_OS_LINUX
+   CPUInfo cpu_info;
+   char* features = cpu_info.ExtractField("isa");
+ 
+@@ -880,17 +878,6 @@ CPU::CPU()
+     has_fpu_ = true;
+     has_rvv_ = true;
+   }
+-  char* mmu = cpu_info.ExtractField("mmu");
+-  if (HasListItem(mmu, "sv48")) {
+-    riscv_mmu_ = RV_MMU_MODE::kRiscvSV48;
+-  }
+-  if (HasListItem(mmu, "sv39")) {
+-    riscv_mmu_ = RV_MMU_MODE::kRiscvSV39;
+-  }
+-  if (HasListItem(mmu, "sv57")) {
+-    riscv_mmu_ = RV_MMU_MODE::kRiscvSV57;
+-  }
+-#endif
+ #endif  // V8_HOST_ARCH_RISCV64
+ }
+ 
+diff --git a/src/base/cpu.h b/src/base/cpu.h
+index a1537faa756..ff22712625f 100644
+--- a/src/base/cpu.h
++++ b/src/base/cpu.h
+@@ -130,14 +130,8 @@ class V8_BASE_EXPORT CPU final {
+   bool is_fp64_mode() const { return is_fp64_mode_; }
+   bool has_msa() const { return has_msa_; }
+ 
+-  // riscv-specific part codes
++  // riscv features
+   bool has_rvv() const { return has_rvv_; }
+-  enum class RV_MMU_MODE {
+-    kRiscvSV39,
+-    kRiscvSV48,
+-    kRiscvSV57,
+-  };
+-  RV_MMU_MODE riscv_mmu() const { return riscv_mmu_; }
+ 
+  private:
+ #if defined(V8_OS_STARBOARD)
+@@ -190,7 +184,6 @@ class V8_BASE_EXPORT CPU final {
+   bool has_non_stop_time_stamp_counter_;
+   bool is_running_in_vm_;
+   bool has_msa_;
+-  RV_MMU_MODE riscv_mmu_;
+   bool has_rvv_;
+ };
+ 
+diff --git a/src/codegen/riscv/assembler-riscv.cc b/src/codegen/riscv/assembler-riscv.cc
+index db5b12139e6..7e66b509dc2 100644
+--- a/src/codegen/riscv/assembler-riscv.cc
++++ b/src/codegen/riscv/assembler-riscv.cc
+@@ -72,10 +72,6 @@ void CpuFeatures::ProbeImpl(bool cross_compile) {
+   base::CPU cpu;
+   if (cpu.has_fpu()) supported_ |= 1u << FPU;
+   if (cpu.has_rvv()) supported_ |= 1u << RISCV_SIMD;
+-  if (cpu.riscv_mmu() == base::CPU::RV_MMU_MODE::kRiscvSV57) {
+-    FATAL("SV57 is not supported");
+-    UNIMPLEMENTED();
+-  }
+   // Set a static value on whether SIMD is supported.
+   // This variable is only used for certain archs to query SupportWasmSimd128()
+   // at runtime in builtins using an extern ref. Other callers should use
+@@ -1065,27 +1061,21 @@ void Assembler::GeneralLi(Register rd, int64_t imm) {
+ }
+ 
+ void Assembler::li_ptr(Register rd, int64_t imm) {
+-  base::CPU cpu;
+-  if (cpu.riscv_mmu() != base::CPU::RV_MMU_MODE::kRiscvSV57) {
+-    // Initialize rd with an address
+-    // Pointers are 48 bits
+-    // 6 fixed instructions are generated
+-    DCHECK_EQ((imm & 0xfff0000000000000ll), 0);
+-    int64_t a6 = imm & 0x3f;                      // bits 0:5. 6 bits
+-    int64_t b11 = (imm >> 6) & 0x7ff;             // bits 6:11. 11 bits
+-    int64_t high_31 = (imm >> 17) & 0x7fffffff;   // 31 bits
+-    int64_t high_20 = ((high_31 + 0x800) >> 12);  // 19 bits
+-    int64_t low_12 = high_31 & 0xfff;             // 12 bits
+-    lui(rd, (int32_t)high_20);
+-    addi(rd, rd, low_12);  // 31 bits in rd.
+-    slli(rd, rd, 11);      // Space for next 11 bis
+-    ori(rd, rd, b11);      // 11 bits are put in. 42 bit in rd
+-    slli(rd, rd, 6);       // Space for next 6 bits
+-    ori(rd, rd, a6);       // 6 bits are put in. 48 bis in rd
+-  } else {
+-    FATAL("SV57 is not supported");
+-    UNIMPLEMENTED();
+-  }
++  // Initialize rd with an address
++  // Pointers are 48 bits
++  // 6 fixed instructions are generated
++  DCHECK_EQ((imm & 0xfff0000000000000ll), 0);
++  int64_t a6 = imm & 0x3f;                      // bits 0:5. 6 bits
++  int64_t b11 = (imm >> 6) & 0x7ff;             // bits 6:11. 11 bits
++  int64_t high_31 = (imm >> 17) & 0x7fffffff;   // 31 bits
++  int64_t high_20 = ((high_31 + 0x800) >> 12);  // 19 bits
++  int64_t low_12 = high_31 & 0xfff;             // 12 bits
++  lui(rd, (int32_t)high_20);
++  addi(rd, rd, low_12);  // 31 bits in rd.
++  slli(rd, rd, 11);      // Space for next 11 bis
++  ori(rd, rd, b11);      // 11 bits are put in. 42 bit in rd
++  slli(rd, rd, 6);       // Space for next 6 bits
++  ori(rd, rd, a6);       // 6 bits are put in. 48 bis in rd
+ }
+ 
+ void Assembler::li_constant(Register rd, int64_t imm) {
+-- 
+2.39.2
+
