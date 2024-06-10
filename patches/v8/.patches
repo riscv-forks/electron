@@ -14,3 +14,5 @@ cherry-pick-cdbc1d9684a3.patch
 cherry-pick-70d2fe6b7c47.patch
 cherry-pick-901377bb2f3b.patch
 cherry-pick-bc545b15a0ee.patch
+Skip-check-sv57-when-enable-pointer-compress.patch
+avoid-cpu-probing-in-li_ptr.patch
