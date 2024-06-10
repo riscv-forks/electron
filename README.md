@@ -4,6 +4,8 @@ This repo is a fork of electron with riscv64 support added.
 
 Status: Work In Progress
 
+**Note**: [A performance regression](https://github.com/riscv-forks/electron/issues/1) is fixed recently and only the latest versions and v29.4.0 are rebuilt. Please upgrade if you still using other versions.
+
 Releases are published in https://github.com/riscv-forks/electron-riscv-releases
 
 ## Repo Organization
@@ -23,8 +25,8 @@ Prebuilt toolchains are available in GitHub Releases. They can also be built fro
 
 Toolchain issues:
 
-- https://github.com/llvm/llvm-project/issues/79944
-- [Rust doesn't embed target-abi llvm module flag](https://github.com/rust-lang/rust/issues/121924). There's a work-around applied to rust toolchain. It will be fixed by https://github.com/rust-lang/rust/pull/123612
+- https://github.com/llvm/llvm-project/issues/79944 (This only affects building chromiums but coincidentally doesn't affect building electron)
+- [Rust doesn't embed target-abi llvm module flag](https://github.com/rust-lang/rust/issues/121924). There's a work-around applied to rust toolchain. It has been fixed in rust by https://github.com/rust-lang/rust/pull/123612
 
 ## Build Instruction
 
