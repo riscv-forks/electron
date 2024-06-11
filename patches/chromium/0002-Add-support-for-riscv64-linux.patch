@@ -1,45 +1,13 @@
-From 68ee4d98e6c2ce6c60265b51694ac7a82784fcf3 Mon Sep 17 00:00:00 2001
+From 90499f55f949f95b01c84257d306cf209c04b431 Mon Sep 17 00:00:00 2001
 From: Andreas Schwab <schwab@suse.de>
-Date: Fri, 4 Mar 2022 15:27:35 +0100
-Subject: [PATCH 2/8] Add support for riscv64-linux
-
-Bug: 1505003
+Date: Fri, 04 Mar 2022 15:27:35 +0100
+Subject: [PATCH] Add support for riscv64-linux
 
 Change-Id: Ibcdaaba1b0c92a1cd85361b9859370c686832c49
 ---
- sandbox/features.gni                          |    3 +-
- sandbox/linux/bpf_dsl/linux_syscall_ranges.h  |    7 +
- sandbox/linux/bpf_dsl/seccomp_macros.h        |   42 +
- .../bpf_dsl_seccomp_unittest.cc               |   22 +
- .../seccomp-bpf-helpers/baseline_policy.cc    |   11 +-
- .../baseline_policy_unittest.cc               |    6 +-
- .../syscall_parameters_restrictions.cc        |    5 +-
- ...scall_parameters_restrictions_unittests.cc |    1 +
- .../linux/seccomp-bpf-helpers/syscall_sets.cc |   62 +-
- .../linux/seccomp-bpf-helpers/syscall_sets.h  |   14 +-
- sandbox/linux/seccomp-bpf/syscall.cc          |   34 +-
- sandbox/linux/seccomp-bpf/trap.cc             |   12 +
- sandbox/linux/services/credentials.cc         |    2 +-
- sandbox/linux/services/syscall_wrappers.cc    |    2 +-
- .../linux/syscall_broker/broker_process.cc    |   20 +-
- sandbox/linux/system_headers/linux_seccomp.h  |    8 +
- sandbox/linux/system_headers/linux_signal.h   |    2 +-
- sandbox/linux/system_headers/linux_stat.h     |    2 +-
- sandbox/linux/system_headers/linux_syscalls.h |    4 +
- .../system_headers/riscv64_linux_syscalls.h   | 1222 +++++++++++++++++
- sandbox/policy/linux/bpf_cdm_policy_linux.cc  |    2 +-
- .../linux/bpf_cros_amd_gpu_policy_linux.cc    |    2 +-
- sandbox/policy/linux/bpf_gpu_policy_linux.cc  |    2 +-
- .../policy/linux/bpf_network_policy_linux.cc  |    2 +-
- .../bpf_print_compositor_policy_linux.cc      |    2 +-
- .../policy/linux/bpf_renderer_policy_linux.cc |    2 +-
- .../policy/linux/bpf_service_policy_linux.cc  |    2 +-
- .../policy/linux/bpf_utility_policy_linux.cc  |    2 +-
- 28 files changed, 1438 insertions(+), 59 deletions(-)
- create mode 100644 sandbox/linux/system_headers/riscv64_linux_syscalls.h
 
 diff --git a/sandbox/features.gni b/sandbox/features.gni
-index 8434144118b49..8aa52983f78f8 100644
+index 8434144..8aa52983 100644
 --- a/sandbox/features.gni
 +++ b/sandbox/features.gni
 @@ -9,7 +9,8 @@
@@ -53,7 +21,7 @@ index 8434144118b49..8aa52983f78f8 100644
  # SSBD (Speculative Store Bypass Disable) is a mitigation of Spectre Variant 4.
  # As Spectre Variant 4 can be mitigated by site isolation, opt-out SSBD on site
 diff --git a/sandbox/linux/bpf_dsl/linux_syscall_ranges.h b/sandbox/linux/bpf_dsl/linux_syscall_ranges.h
-index 1d0590b7dd6ce..b722fbc95ee3e 100644
+index 1d0590b..b722fbc9 100644
 --- a/sandbox/linux/bpf_dsl/linux_syscall_ranges.h
 +++ b/sandbox/linux/bpf_dsl/linux_syscall_ranges.h
 @@ -56,6 +56,13 @@
@@ -71,10 +39,10 @@ index 1d0590b7dd6ce..b722fbc95ee3e 100644
  #error "Unsupported architecture"
  #endif
 diff --git a/sandbox/linux/bpf_dsl/seccomp_macros.h b/sandbox/linux/bpf_dsl/seccomp_macros.h
-index 87d5825aa3ddb..49fc9a67011a2 100644
+index 87d5825..49fc9a6 100644
 --- a/sandbox/linux/bpf_dsl/seccomp_macros.h
 +++ b/sandbox/linux/bpf_dsl/seccomp_macros.h
-@@ -343,6 +343,48 @@ struct regs_struct {
+@@ -343,6 +343,48 @@
  #define SECCOMP_PT_PARM4(_regs) (_regs).regs[3]
  #define SECCOMP_PT_PARM5(_regs) (_regs).regs[4]
  #define SECCOMP_PT_PARM6(_regs) (_regs).regs[5]
@@ -124,7 +92,7 @@ index 87d5825aa3ddb..49fc9a67011a2 100644
  #error Unsupported target platform
  
 diff --git a/sandbox/linux/integration_tests/bpf_dsl_seccomp_unittest.cc b/sandbox/linux/integration_tests/bpf_dsl_seccomp_unittest.cc
-index 4a2721c7ce197..c3155723d8fed 100644
+index 4a2721c..8ef9f51a 100644
 --- a/sandbox/linux/integration_tests/bpf_dsl_seccomp_unittest.cc
 +++ b/sandbox/linux/integration_tests/bpf_dsl_seccomp_unittest.cc
 @@ -17,6 +17,7 @@
@@ -135,7 +103,7 @@ index 4a2721c7ce197..c3155723d8fed 100644
  
  #include <memory>
  #include <vector>
-@@ -2029,7 +2030,15 @@ SANDBOX_TEST(SandboxBPF, DISABLE_ON_TSAN(SeccompRetTrace)) {
+@@ -2029,7 +2030,15 @@
      BPF_ASSERT_EQ(kTraceData, data);
  
      regs_struct regs;
@@ -151,14 +119,14 @@ index 4a2721c7ce197..c3155723d8fed 100644
      switch (SECCOMP_PT_SYSCALL(regs)) {
        case __NR_write:
          // Skip writes to stdout, make it return kExpectedReturnValue.  Allow
-@@ -2037,7 +2046,14 @@ SANDBOX_TEST(SandboxBPF, DISABLE_ON_TSAN(SeccompRetTrace)) {
+@@ -2037,7 +2046,14 @@
          if (SECCOMP_PT_PARM1(regs) == STDOUT_FILENO) {
            BPF_ASSERT_NE(-1, SetSyscall(pid, &regs, -1));
            SECCOMP_PT_RESULT(regs) = kExpectedReturnValue;
 +#if defined(__riscv)
-+	  iov.iov_len = sizeof(regs);
-+	  BPF_ASSERT_NE(-1, ptrace(PTRACE_SETREGSET, pid,
-+				   reinterpret_cast<void*>(NT_PRSTATUS),
++          iov.iov_len = sizeof(regs);
++          BPF_ASSERT_NE(-1, ptrace(PTRACE_SETREGSET, pid,
++                                   reinterpret_cast<void*>(NT_PRSTATUS),
 +                                   &iov));
 +#else
            BPF_ASSERT_NE(-1, ptrace(PTRACE_SETREGS, pid, NULL, &regs));
@@ -166,13 +134,13 @@ index 4a2721c7ce197..c3155723d8fed 100644
          }
          break;
  
-@@ -2045,7 +2061,13 @@ SANDBOX_TEST(SandboxBPF, DISABLE_ON_TSAN(SeccompRetTrace)) {
+@@ -2045,7 +2061,13 @@
          // Rewrite to exit(kExpectedReturnValue).
          BPF_ASSERT_NE(-1, SetSyscall(pid, &regs, __NR_exit));
          SECCOMP_PT_PARM1(regs) = kExpectedReturnValue;
 +#if defined(__riscv)
 +        iov.iov_len = sizeof(regs);
-+	BPF_ASSERT_NE(-1, ptrace(PTRACE_SETREGSET, pid,
++        BPF_ASSERT_NE(-1, ptrace(PTRACE_SETREGSET, pid,
 +                                 reinterpret_cast<void*>(NT_PRSTATUS), &iov));
 +#else
          BPF_ASSERT_NE(-1, ptrace(PTRACE_SETREGS, pid, NULL, &regs));
@@ -181,20 +149,20 @@ index 4a2721c7ce197..c3155723d8fed 100644
  
        default:
 diff --git a/sandbox/linux/seccomp-bpf-helpers/baseline_policy.cc b/sandbox/linux/seccomp-bpf-helpers/baseline_policy.cc
-index 7bde501115bdf..b92ab3901acd8 100644
+index 7bde501..b92ab39 100644
 --- a/sandbox/linux/seccomp-bpf-helpers/baseline_policy.cc
 +++ b/sandbox/linux/seccomp-bpf-helpers/baseline_policy.cc
-@@ -59,6 +59,9 @@ bool IsBaselinePolicyAllowed(int sysno) {
- #endif
+@@ -60,6 +60,9 @@
  #if defined(__mips__)
           SyscallSets::IsMipsPrivate(sysno) ||
-+#endif
+ #endif
 +#if defined(__riscv)
 +         SyscallSets::IsRiscvPrivate(sysno) ||
- #endif
++#endif
           SyscallSets::IsAllowedOperationOnFd(sysno);
    // clang-format on
-@@ -193,7 +196,7 @@ ResultExpr EvaluateSyscallImpl(int fs_denied_errno,
+ }
+@@ -193,7 +196,7 @@
      return RestrictFcntlCommands();
  #endif
  
@@ -203,7 +171,7 @@ index 7bde501115bdf..b92ab3901acd8 100644
    // fork() is never used as a system call (clone() is used instead), but we
    // have seen it in fallback code on Android.
    if (sysno == __NR_fork) {
-@@ -255,7 +258,7 @@ ResultExpr EvaluateSyscallImpl(int fs_denied_errno,
+@@ -255,7 +258,7 @@
    }
  
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -212,7 +180,7 @@ index 7bde501115bdf..b92ab3901acd8 100644
    if (sysno == __NR_mmap)
      return RestrictMmapFlags();
  #endif
-@@ -276,7 +279,7 @@ ResultExpr EvaluateSyscallImpl(int fs_denied_errno,
+@@ -276,7 +279,7 @@
      return RestrictPrctl();
  
  #if defined(__x86_64__) || defined(__arm__) || defined(__mips__) || \
@@ -221,7 +189,7 @@ index 7bde501115bdf..b92ab3901acd8 100644
    if (sysno == __NR_socketpair) {
      // Only allow AF_UNIX, PF_UNIX. Crash if anything else is seen.
      static_assert(AF_UNIX == PF_UNIX,
-@@ -366,7 +369,7 @@ ResultExpr EvaluateSyscallImpl(int fs_denied_errno,
+@@ -366,7 +369,7 @@
    // Allow creating pipes, but don't allow weird flags to pipe2().
    // O_NOTIFICATION_PIPE (== O_EXCL) can be used to create
    // "notification pipes", which are rarely used.
@@ -231,10 +199,10 @@ index 7bde501115bdf..b92ab3901acd8 100644
      return Allow();
    }
 diff --git a/sandbox/linux/seccomp-bpf-helpers/baseline_policy_unittest.cc b/sandbox/linux/seccomp-bpf-helpers/baseline_policy_unittest.cc
-index dbbf1fb510b4e..f9915f9d15727 100644
+index a0a8796..8bea4c9 100644
 --- a/sandbox/linux/seccomp-bpf-helpers/baseline_policy_unittest.cc
 +++ b/sandbox/linux/seccomp-bpf-helpers/baseline_policy_unittest.cc
-@@ -256,7 +256,7 @@ BPF_TEST_C(BaselinePolicy, GetRandom, BaselinePolicy) {
+@@ -270,7 +270,7 @@
  }
  
  // Not all architectures can restrict the domain for socketpair().
@@ -243,7 +211,7 @@ index dbbf1fb510b4e..f9915f9d15727 100644
  BPF_DEATH_TEST_C(BaselinePolicy,
                   SocketpairWrongDomain,
                   DEATH_SEGV_MESSAGE(GetErrorMessageContentForTests()),
-@@ -265,7 +265,7 @@ BPF_DEATH_TEST_C(BaselinePolicy,
+@@ -279,7 +279,7 @@
    std::ignore = socketpair(AF_INET, SOCK_STREAM, 0, sv);
    _exit(1);
  }
@@ -252,7 +220,7 @@ index dbbf1fb510b4e..f9915f9d15727 100644
  
  BPF_TEST_C(BaselinePolicy, EPERM_open, BaselinePolicy) {
    errno = 0;
-@@ -329,7 +329,7 @@ TEST_BASELINE_SIGSYS(__NR_sysinfo)
+@@ -343,7 +343,7 @@
  TEST_BASELINE_SIGSYS(__NR_syslog)
  TEST_BASELINE_SIGSYS(__NR_timer_create)
  
@@ -262,7 +230,7 @@ index dbbf1fb510b4e..f9915f9d15727 100644
  TEST_BASELINE_SIGSYS(__NR_vserver)
  #endif
 diff --git a/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions.cc b/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions.cc
-index ba995ace6d436..34092b463bb24 100644
+index 74112e8..b451c19 100644
 --- a/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions.cc
 +++ b/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions.cc
 @@ -37,6 +37,7 @@
@@ -273,7 +241,7 @@ index ba995ace6d436..34092b463bb24 100644
      !defined(PTRACE_GET_THREAD_AREA)
  // Also include asm/ptrace-abi.h since ptrace.h in older libc (for instance
  // the one in Ubuntu 16.04 LTS) is missing PTRACE_GET_THREAD_AREA.
-@@ -459,8 +460,10 @@ ResultExpr RestrictPtrace() {
+@@ -463,8 +464,10 @@
  #endif
    return Switch(request)
        .Cases({
@@ -286,7 +254,7 @@ index ba995ace6d436..34092b463bb24 100644
  #endif
  #if defined(__arm__)
 diff --git a/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions_unittests.cc b/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions_unittests.cc
-index cc6a1f86c29e6..ba38ebc06313f 100644
+index 10e64a2c..ddfd6a7 100644
 --- a/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions_unittests.cc
 +++ b/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions_unittests.cc
 @@ -7,6 +7,7 @@
@@ -298,10 +266,10 @@ index cc6a1f86c29e6..ba38ebc06313f 100644
  #include <sys/prctl.h>
  #include <sys/ptrace.h>
 diff --git a/sandbox/linux/seccomp-bpf-helpers/syscall_sets.cc b/sandbox/linux/seccomp-bpf-helpers/syscall_sets.cc
-index 27ea264070dcd..d0d85ab1c8416 100644
+index 4cde283..bc680424 100644
 --- a/sandbox/linux/seccomp-bpf-helpers/syscall_sets.cc
 +++ b/sandbox/linux/seccomp-bpf-helpers/syscall_sets.cc
-@@ -103,7 +103,7 @@ bool SyscallSets::IsUmask(int sysno) {
+@@ -103,7 +103,7 @@
  // Both EPERM and ENOENT are valid errno unless otherwise noted in comment.
  bool SyscallSets::IsFileSystem(int sysno) {
    switch (sysno) {
@@ -310,7 +278,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_access:  // EPERM not a valid errno.
      case __NR_chmod:
      case __NR_chown:
-@@ -136,7 +136,7 @@ bool SyscallSets::IsFileSystem(int sysno) {
+@@ -136,7 +136,7 @@
      case __NR_faccessat2:
      case __NR_fchmodat:
      case __NR_fchownat:  // Should be called chownat ?
@@ -319,7 +287,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_newfstatat:  // fstatat(). EPERM not a valid errno.
  #elif defined(__i386__) || defined(__arm__) || \
      (defined(ARCH_CPU_MIPS_FAMILY) && defined(ARCH_CPU_32_BITS))
-@@ -241,7 +241,7 @@ bool SyscallSets::IsAllowedFileSystemAccessViaFd(int sysno) {
+@@ -241,7 +241,7 @@
      case __NR_oldfstat:
  #endif
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -328,7 +296,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_sync_file_range:  // EPERM not a valid errno.
  #elif defined(__arm__)
      case __NR_arm_sync_file_range:  // EPERM not a valid errno.
-@@ -260,7 +260,7 @@ bool SyscallSets::IsDeniedFileSystemAccessViaFd(int sysno) {
+@@ -260,7 +260,7 @@
  #if defined(__i386__) || defined(__arm__)
      case __NR_fchown32:
  #endif
@@ -337,7 +305,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_getdents:    // EPERM not a valid errno.
  #endif
      case __NR_getdents64:  // EPERM not a valid errno.
-@@ -339,7 +339,7 @@ bool SyscallSets::IsProcessPrivilegeChange(int sysno) {
+@@ -339,7 +339,7 @@
  bool SyscallSets::IsProcessGroupOrSession(int sysno) {
    switch (sysno) {
      case __NR_setpgid:
@@ -346,7 +314,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_getpgrp:
  #endif
      case __NR_setsid:
-@@ -373,7 +373,7 @@ bool SyscallSets::IsAllowedSignalHandling(int sysno) {
+@@ -373,7 +373,7 @@
      case __NR_rt_sigqueueinfo:
      case __NR_rt_sigsuspend:
      case __NR_rt_tgsigqueueinfo:
@@ -355,7 +323,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_signalfd:
  #endif
      case __NR_signalfd4:
-@@ -397,12 +397,12 @@ bool SyscallSets::IsAllowedOperationOnFd(int sysno) {
+@@ -397,12 +397,12 @@
    switch (sysno) {
      case __NR_close:
      case __NR_dup:
@@ -370,7 +338,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_shutdown:
  #endif
        return true;
-@@ -441,7 +441,7 @@ bool SyscallSets::IsAllowedProcessStartOrDeath(int sysno) {
+@@ -441,7 +441,7 @@
        return true;
      case __NR_clone:  // Should be parameter-restricted.
      case __NR_setns:  // Privileged.
@@ -379,7 +347,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_fork:
  #endif
  #if defined(__i386__) || defined(__x86_64__)
-@@ -452,7 +452,7 @@ bool SyscallSets::IsAllowedProcessStartOrDeath(int sysno) {
+@@ -452,7 +452,7 @@
  #endif
      case __NR_set_tid_address:
      case __NR_unshare:
@@ -388,7 +356,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_vfork:
  #endif
      default:
-@@ -477,7 +477,7 @@ bool SyscallSets::IsAllowedFutex(int sysno) {
+@@ -477,7 +477,7 @@
  
  bool SyscallSets::IsAllowedEpoll(int sysno) {
    switch (sysno) {
@@ -397,7 +365,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_epoll_create:
      case __NR_epoll_wait:
  #endif
-@@ -499,7 +499,7 @@ bool SyscallSets::IsAllowedEpoll(int sysno) {
+@@ -499,7 +499,7 @@
  bool SyscallSets::IsDeniedGetOrModifySocket(int sysno) {
    switch (sysno) {
  #if defined(__x86_64__) || defined(__arm__) || defined(__mips__) || \
@@ -406,7 +374,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_accept:
      case __NR_accept4:
      case __NR_bind:
-@@ -553,7 +553,7 @@ bool SyscallSets::IsAllowedAddressSpaceAccess(int sysno) {
+@@ -553,7 +553,7 @@
      case __NR_mincore:
      case __NR_mlockall:
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -415,7 +383,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_mmap:
  #endif
  #if defined(__i386__) || defined(__arm__) || \
-@@ -586,7 +586,7 @@ bool SyscallSets::IsAllowedGeneralIo(int sysno) {
+@@ -586,7 +586,7 @@
      (defined(ARCH_CPU_MIPS_FAMILY) && defined(ARCH_CPU_32_BITS))
      case __NR__llseek:
  #endif
@@ -424,7 +392,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_poll:
  #endif
      case __NR_ppoll:
-@@ -607,7 +607,7 @@ bool SyscallSets::IsAllowedGeneralIo(int sysno) {
+@@ -607,7 +607,7 @@
      case __NR_recv:
  #endif
  #if defined(__x86_64__) || defined(__arm__) || defined(__mips__) || \
@@ -433,7 +401,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_recvfrom:  // Could specify source.
      case __NR_recvmsg:   // Could specify source.
  #endif
-@@ -622,7 +622,7 @@ bool SyscallSets::IsAllowedGeneralIo(int sysno) {
+@@ -622,7 +622,7 @@
      case __NR_send:
  #endif
  #if defined(__x86_64__) || defined(__arm__) || defined(__mips__) || \
@@ -442,7 +410,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_sendmsg:  // Could specify destination.
      case __NR_sendto:   // Could specify destination.
  #endif
-@@ -671,7 +671,7 @@ bool SyscallSets::IsSeccomp(int sysno) {
+@@ -671,7 +671,7 @@
  bool SyscallSets::IsAllowedBasicScheduler(int sysno) {
    switch (sysno) {
      case __NR_sched_yield:
@@ -451,7 +419,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_pause:
  #endif
      case __NR_nanosleep:
-@@ -755,7 +755,7 @@ bool SyscallSets::IsNuma(int sysno) {
+@@ -755,7 +755,7 @@
      case __NR_getcpu:
      case __NR_mbind:
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -460,7 +428,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_migrate_pages:
  #endif
      case __NR_move_pages:
-@@ -790,7 +790,7 @@ bool SyscallSets::IsGlobalProcessEnvironment(int sysno) {
+@@ -790,7 +790,7 @@
    switch (sysno) {
      case __NR_acct:  // Privileged.
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -469,7 +437,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_getrlimit:
  #endif
  #if defined(__i386__) || defined(__arm__)
-@@ -825,7 +825,7 @@ bool SyscallSets::IsDebug(int sysno) {
+@@ -825,7 +825,7 @@
  
  bool SyscallSets::IsGlobalSystemStatus(int sysno) {
    switch (sysno) {
@@ -478,7 +446,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR__sysctl:
      case __NR_sysfs:
  #endif
-@@ -843,7 +843,7 @@ bool SyscallSets::IsGlobalSystemStatus(int sysno) {
+@@ -843,7 +843,7 @@
  
  bool SyscallSets::IsEventFd(int sysno) {
    switch (sysno) {
@@ -487,7 +455,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_eventfd:
  #endif
      case __NR_eventfd2:
-@@ -895,6 +895,7 @@ bool SyscallSets::IsKeyManagement(int sysno) {
+@@ -895,6 +895,7 @@
  }
  
  #if defined(__x86_64__) || defined(__arm__) || defined(__aarch64__) || \
@@ -495,7 +463,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      (defined(ARCH_CPU_MIPS_FAMILY) && defined(ARCH_CPU_64_BITS))
  bool SyscallSets::IsSystemVSemaphores(int sysno) {
    switch (sysno) {
-@@ -914,7 +915,7 @@ bool SyscallSets::IsSystemVSemaphores(int sysno) {
+@@ -914,7 +915,7 @@
  #endif
  
  #if defined(__i386__) || defined(__x86_64__) || defined(__arm__) || \
@@ -504,7 +472,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      (defined(ARCH_CPU_MIPS_FAMILY) && defined(ARCH_CPU_64_BITS))
  // These give a lot of ambient authority and bypass the setuid sandbox.
  bool SyscallSets::IsSystemVSharedMemory(int sysno) {
-@@ -931,6 +932,7 @@ bool SyscallSets::IsSystemVSharedMemory(int sysno) {
+@@ -931,6 +932,7 @@
  #endif
  
  #if defined(__x86_64__) || defined(__arm__) || defined(__aarch64__) || \
@@ -512,7 +480,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      (defined(ARCH_CPU_MIPS_FAMILY) && defined(ARCH_CPU_64_BITS))
  bool SyscallSets::IsSystemVMessageQueue(int sysno) {
    switch (sysno) {
-@@ -962,6 +964,7 @@ bool SyscallSets::IsSystemVIpc(int sysno) {
+@@ -962,6 +964,7 @@
  
  bool SyscallSets::IsAnySystemV(int sysno) {
  #if defined(__x86_64__) || defined(__arm__) || defined(__aarch64__) || \
@@ -520,7 +488,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      (defined(ARCH_CPU_MIPS_FAMILY) && defined(ARCH_CPU_64_BITS))
    return IsSystemVMessageQueue(sysno) || IsSystemVSemaphores(sysno) ||
           IsSystemVSharedMemory(sysno);
-@@ -999,7 +1002,7 @@ bool SyscallSets::IsAdvancedScheduler(int sysno) {
+@@ -999,7 +1002,7 @@
  bool SyscallSets::IsInotify(int sysno) {
    switch (sysno) {
      case __NR_inotify_add_watch:
@@ -529,7 +497,7 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_inotify_init:
  #endif
      case __NR_inotify_init1:
-@@ -1137,7 +1140,7 @@ bool SyscallSets::IsMisc(int sysno) {
+@@ -1134,7 +1137,7 @@
  #if defined(__x86_64__)
      case __NR_tuxcall:
  #endif
@@ -538,13 +506,14 @@ index 27ea264070dcd..d0d85ab1c8416 100644
      case __NR_vserver:
  #endif
        return true;
-@@ -1196,6 +1199,17 @@ bool SyscallSets::IsMipsMisc(int sysno) {
+@@ -1193,6 +1196,18 @@
  }
  #endif  // defined(__mips__)
  
 +#if defined(__riscv)
 +bool SyscallSets::IsRiscvPrivate(int sysno) {
 +  switch (sysno) {
++    case __NR_riscv_hwprobe:
 +    case __NR_riscv_flush_icache:
 +      return true;
 +    default:
@@ -557,10 +526,10 @@ index 27ea264070dcd..d0d85ab1c8416 100644
    switch (sysno) {
      case __NR_getitimer:
 diff --git a/sandbox/linux/seccomp-bpf-helpers/syscall_sets.h b/sandbox/linux/seccomp-bpf-helpers/syscall_sets.h
-index 9be7b03ec4377..41b3605dce15d 100644
+index 9be7b03..41b3605 100644
 --- a/sandbox/linux/seccomp-bpf-helpers/syscall_sets.h
 +++ b/sandbox/linux/seccomp-bpf-helpers/syscall_sets.h
-@@ -52,7 +52,7 @@ class SANDBOX_EXPORT SyscallSets {
+@@ -52,7 +52,7 @@
  #endif
  
  #if defined(__x86_64__) || defined(__arm__) || defined(__mips__) || \
@@ -569,7 +538,7 @@ index 9be7b03ec4377..41b3605dce15d 100644
    static bool IsNetworkSocketInformation(int sysno);
  #endif
  
-@@ -79,18 +79,21 @@ class SANDBOX_EXPORT SyscallSets {
+@@ -79,18 +79,21 @@
    static bool IsAsyncIo(int sysno);
    static bool IsKeyManagement(int sysno);
  #if defined(__x86_64__) || defined(__arm__) || defined(__aarch64__) || \
@@ -594,7 +563,7 @@ index 9be7b03ec4377..41b3605dce15d 100644
    static bool IsSystemVMessageQueue(int sysno);
  #endif
  
-@@ -117,6 +120,9 @@ class SANDBOX_EXPORT SyscallSets {
+@@ -117,6 +120,9 @@
    static bool IsMipsPrivate(int sysno);
    static bool IsMipsMisc(int sysno);
  #endif  // defined(__mips__)
@@ -605,10 +574,10 @@ index 9be7b03ec4377..41b3605dce15d 100644
  };
  
 diff --git a/sandbox/linux/seccomp-bpf/syscall.cc b/sandbox/linux/seccomp-bpf/syscall.cc
-index 02cbb047c1558..9eb97f27ce00d 100644
+index 02cbb04..9eb97f27 100644
 --- a/sandbox/linux/seccomp-bpf/syscall.cc
 +++ b/sandbox/linux/seccomp-bpf/syscall.cc
-@@ -18,7 +18,7 @@ namespace sandbox {
+@@ -18,7 +18,7 @@
  namespace {
  
  #if defined(ARCH_CPU_X86_FAMILY) || defined(ARCH_CPU_ARM_FAMILY) || \
@@ -617,7 +586,7 @@ index 02cbb047c1558..9eb97f27ce00d 100644
  // Number that's not currently used by any Linux kernel ABIs.
  const int kInvalidSyscallNumber = 0x351d3;
  #else
-@@ -308,6 +308,28 @@ asm(// We need to be able to tell the kernel exactly where we made a
+@@ -308,6 +308,28 @@
      "2:ret\n"
      ".cfi_endproc\n"
      ".size SyscallAsm, .-SyscallAsm\n"
@@ -646,7 +615,7 @@ index 02cbb047c1558..9eb97f27ce00d 100644
  #endif
      );  // asm
  
-@@ -319,6 +341,10 @@ intptr_t SyscallAsm(intptr_t nr, const intptr_t args[6]);
+@@ -319,6 +341,10 @@
  extern "C" {
  intptr_t SyscallAsm(intptr_t nr, const intptr_t args[8]);
  }
@@ -657,7 +626,7 @@ index 02cbb047c1558..9eb97f27ce00d 100644
  #endif
  
  }  // namespace
-@@ -351,6 +377,10 @@ intptr_t Syscall::Call(int nr,
+@@ -351,6 +377,10 @@
    //                 where that makes sense.
  #if defined(__mips__)
    const intptr_t args[8] = {p0, p1, p2, p3, p4, p5, p6, p7};
@@ -668,7 +637,7 @@ index 02cbb047c1558..9eb97f27ce00d 100644
  #else
    DCHECK_EQ(p6, 0) << " Support for syscalls with more than six arguments not "
                        "added for this architecture";
-@@ -425,6 +455,8 @@ intptr_t Syscall::Call(int nr,
+@@ -425,6 +455,8 @@
      ret = inout;
    }
  
@@ -678,10 +647,10 @@ index 02cbb047c1558..9eb97f27ce00d 100644
  #error "Unimplemented architecture"
  #endif
 diff --git a/sandbox/linux/seccomp-bpf/trap.cc b/sandbox/linux/seccomp-bpf/trap.cc
-index 7f262aaff65c7..db974e488e529 100644
+index d466e62..a5ed98b7 100644
 --- a/sandbox/linux/seccomp-bpf/trap.cc
 +++ b/sandbox/linux/seccomp-bpf/trap.cc
-@@ -217,6 +217,18 @@ void Trap::SigSys(int nr, LinuxSigInfo* info, ucontext_t* ctx) {
+@@ -216,6 +216,18 @@
                         SECCOMP_PARM6(ctx),
                         SECCOMP_PARM7(ctx),
                         SECCOMP_PARM8(ctx));
@@ -701,10 +670,10 @@ index 7f262aaff65c7..db974e488e529 100644
      rc = Syscall::Call(SECCOMP_SYSCALL(ctx),
                         SECCOMP_PARM1(ctx),
 diff --git a/sandbox/linux/services/credentials.cc b/sandbox/linux/services/credentials.cc
-index e284c59d239ae..5b5346a2778bc 100644
+index a33597c..d4180ac 100644
 --- a/sandbox/linux/services/credentials.cc
 +++ b/sandbox/linux/services/credentials.cc
-@@ -80,7 +80,7 @@ bool ChrootToSafeEmptyDir() {
+@@ -80,7 +80,7 @@
    pid_t pid = -1;
    alignas(16) char stack_buf[PTHREAD_STACK_MIN];
  #if defined(ARCH_CPU_X86_FAMILY) || defined(ARCH_CPU_ARM_FAMILY) || \
@@ -714,10 +683,10 @@ index e284c59d239ae..5b5346a2778bc 100644
    void* stack = stack_buf + sizeof(stack_buf);
  #else
 diff --git a/sandbox/linux/services/syscall_wrappers.cc b/sandbox/linux/services/syscall_wrappers.cc
-index 7650e983b3802..bb4bd33236381 100644
+index 7650e98..bb4bd332 100644
 --- a/sandbox/linux/services/syscall_wrappers.cc
 +++ b/sandbox/linux/services/syscall_wrappers.cc
-@@ -61,7 +61,7 @@ long sys_clone(unsigned long flags,
+@@ -61,7 +61,7 @@
  #if defined(ARCH_CPU_X86_64)
    return syscall(__NR_clone, flags, child_stack, ptid, ctid, tls);
  #elif defined(ARCH_CPU_X86) || defined(ARCH_CPU_ARM_FAMILY) || \
@@ -727,10 +696,10 @@ index 7650e983b3802..bb4bd33236381 100644
    return syscall(__NR_clone, flags, child_stack, ptid, tls, ctid);
  #endif
 diff --git a/sandbox/linux/syscall_broker/broker_process.cc b/sandbox/linux/syscall_broker/broker_process.cc
-index c6c1117c2337e..779065a0cbd78 100644
+index c6c1117..779065a 100644
 --- a/sandbox/linux/syscall_broker/broker_process.cc
 +++ b/sandbox/linux/syscall_broker/broker_process.cc
-@@ -122,44 +122,46 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
+@@ -122,44 +122,46 @@
    // and are default disabled in Android. So, we should refuse to broker them
    // to be consistent with the platform's restrictions.
    switch (sysno) {
@@ -784,7 +753,7 @@ index c6c1117c2337e..779065a0cbd78 100644
      case __NR_stat:
      case __NR_lstat:
  #endif
-@@ -169,7 +171,7 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
+@@ -169,7 +171,7 @@
  #if defined(__NR_fstatat64)
      case __NR_fstatat64:
  #endif
@@ -793,7 +762,7 @@ index c6c1117c2337e..779065a0cbd78 100644
      case __NR_newfstatat:
  #endif
        return !fast_check || policy_->allowed_command_set.test(COMMAND_STAT);
-@@ -184,7 +186,7 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
+@@ -184,7 +186,7 @@
        return !fast_check || policy_->allowed_command_set.test(COMMAND_STAT);
  #endif
  
@@ -803,7 +772,7 @@ index c6c1117c2337e..779065a0cbd78 100644
        return !fast_check || policy_->allowed_command_set.test(COMMAND_UNLINK);
  #endif
 diff --git a/sandbox/linux/system_headers/linux_seccomp.h b/sandbox/linux/system_headers/linux_seccomp.h
-index 8690a96eb01b1..dec2afc744985 100644
+index 8690a96..dec2afc7 100644
 --- a/sandbox/linux/system_headers/linux_seccomp.h
 +++ b/sandbox/linux/system_headers/linux_seccomp.h
 @@ -39,6 +39,10 @@
@@ -829,7 +798,7 @@ index 8690a96eb01b1..dec2afc744985 100644
  #ifndef PR_SET_SECCOMP
  #define PR_SET_SECCOMP               22
 diff --git a/sandbox/linux/system_headers/linux_signal.h b/sandbox/linux/system_headers/linux_signal.h
-index 69ccaf1081578..2ffe30973cd32 100644
+index 69ccaf1..2ffe3097 100644
 --- a/sandbox/linux/system_headers/linux_signal.h
 +++ b/sandbox/linux/system_headers/linux_signal.h
 @@ -13,7 +13,7 @@
@@ -842,10 +811,10 @@ index 69ccaf1081578..2ffe30973cd32 100644
  #define LINUX_SIGHUP 1
  #define LINUX_SIGINT 2
 diff --git a/sandbox/linux/system_headers/linux_stat.h b/sandbox/linux/system_headers/linux_stat.h
-index 3aae8cbced775..74977adb53caf 100644
+index 3aae8cb..74977adb 100644
 --- a/sandbox/linux/system_headers/linux_stat.h
 +++ b/sandbox/linux/system_headers/linux_stat.h
-@@ -150,7 +150,7 @@ struct kernel_stat {
+@@ -150,7 +150,7 @@
    int st_blocks;
    int st_pad4[14];
  };
@@ -855,7 +824,7 @@ index 3aae8cbced775..74977adb53caf 100644
    unsigned long st_dev;
    unsigned long st_ino;
 diff --git a/sandbox/linux/system_headers/linux_syscalls.h b/sandbox/linux/system_headers/linux_syscalls.h
-index 438147b4018b6..d6de8c1cb2340 100644
+index 438147b..d6de8c1 100644
 --- a/sandbox/linux/system_headers/linux_syscalls.h
 +++ b/sandbox/linux/system_headers/linux_syscalls.h
 @@ -35,5 +35,9 @@
@@ -870,10 +839,10 @@ index 438147b4018b6..d6de8c1cb2340 100644
  
 diff --git a/sandbox/linux/system_headers/riscv64_linux_syscalls.h b/sandbox/linux/system_headers/riscv64_linux_syscalls.h
 new file mode 100644
-index 0000000000000..822f660dc5086
+index 0000000..50e043d0
 --- /dev/null
 +++ b/sandbox/linux/system_headers/riscv64_linux_syscalls.h
-@@ -0,0 +1,1222 @@
+@@ -0,0 +1,1226 @@
 +// Copyright 2014 The Chromium Authors
 +// Use of this source code is governed by a BSD-style license that can be
 +// found in the LICENSE file.
@@ -1859,6 +1828,10 @@ index 0000000000000..822f660dc5086
 +#define __NR_recvmmsg 243
 +#endif
 +
++#if !defined(__NR_riscv_hwprobe)
++#define __NR_riscv_hwprobe 258
++#endif
++
 +#if !defined(__NR_riscv_flush_icache)
 +#define __NR_riscv_flush_icache 259
 +#endif
@@ -2097,10 +2070,10 @@ index 0000000000000..822f660dc5086
 +
 +#endif  // SANDBOX_LINUX_SYSTEM_HEADERS_RISCV64_LINUX_SYSCALLS_H_
 diff --git a/sandbox/policy/linux/bpf_cdm_policy_linux.cc b/sandbox/policy/linux/bpf_cdm_policy_linux.cc
-index 433720fa9dd0f..482ce1d8149ce 100644
+index 433720f..482ce1d 100644
 --- a/sandbox/policy/linux/bpf_cdm_policy_linux.cc
 +++ b/sandbox/policy/linux/bpf_cdm_policy_linux.cc
-@@ -33,7 +33,7 @@ ResultExpr CdmProcessPolicy::EvaluateSyscall(int sysno) const {
+@@ -33,7 +33,7 @@
      case __NR_ftruncate:
      case __NR_fallocate:
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -2110,10 +2083,10 @@ index 433720fa9dd0f..482ce1d8149ce 100644
  #endif
  #if defined(__i386__) || defined(__arm__)
 diff --git a/sandbox/policy/linux/bpf_cros_amd_gpu_policy_linux.cc b/sandbox/policy/linux/bpf_cros_amd_gpu_policy_linux.cc
-index df2567f74981f..41e158a292369 100644
+index df2567f..41e158a 100644
 --- a/sandbox/policy/linux/bpf_cros_amd_gpu_policy_linux.cc
 +++ b/sandbox/policy/linux/bpf_cros_amd_gpu_policy_linux.cc
-@@ -38,7 +38,7 @@ ResultExpr CrosAmdGpuProcessPolicy::EvaluateSyscall(int sysno) const {
+@@ -38,7 +38,7 @@
      case __NR_sched_setscheduler:
      case __NR_sysinfo:
      case __NR_uname:
@@ -2123,10 +2096,10 @@ index df2567f74981f..41e158a292369 100644
      case __NR_stat:
  #endif
 diff --git a/sandbox/policy/linux/bpf_gpu_policy_linux.cc b/sandbox/policy/linux/bpf_gpu_policy_linux.cc
-index 35ccbb7a7f82b..65a0587e25af5 100644
+index 35ccbb7..65a0587 100644
 --- a/sandbox/policy/linux/bpf_gpu_policy_linux.cc
 +++ b/sandbox/policy/linux/bpf_gpu_policy_linux.cc
-@@ -73,7 +73,7 @@ ResultExpr GpuProcessPolicy::EvaluateSyscall(int sysno) const {
+@@ -73,7 +73,7 @@
      (defined(ARCH_CPU_MIPS_FAMILY) && defined(ARCH_CPU_32_BITS))
      case __NR_ftruncate64:
  #endif
@@ -2136,10 +2109,10 @@ index 35ccbb7a7f82b..65a0587e25af5 100644
  #endif
      case __NR_getdents64:
 diff --git a/sandbox/policy/linux/bpf_network_policy_linux.cc b/sandbox/policy/linux/bpf_network_policy_linux.cc
-index ed1582d790570..4f49297e13a69 100644
+index e5168ff0..3e6f821 100644
 --- a/sandbox/policy/linux/bpf_network_policy_linux.cc
 +++ b/sandbox/policy/linux/bpf_network_policy_linux.cc
-@@ -255,7 +255,7 @@ ResultExpr NetworkProcessPolicy::EvaluateSyscall(int sysno) const {
+@@ -260,7 +260,7 @@
      case __NR_fdatasync:
      case __NR_fsync:
      case __NR_mremap:
@@ -2149,10 +2122,10 @@ index ed1582d790570..4f49297e13a69 100644
  #endif
      case __NR_getdents64:
 diff --git a/sandbox/policy/linux/bpf_print_compositor_policy_linux.cc b/sandbox/policy/linux/bpf_print_compositor_policy_linux.cc
-index bff338a903e58..36acee528ce6f 100644
+index bff338a..36acee52 100644
 --- a/sandbox/policy/linux/bpf_print_compositor_policy_linux.cc
 +++ b/sandbox/policy/linux/bpf_print_compositor_policy_linux.cc
-@@ -33,7 +33,7 @@ ResultExpr PrintCompositorProcessPolicy::EvaluateSyscall(int sysno) const {
+@@ -33,7 +33,7 @@
      case __NR_fdatasync:
      case __NR_fsync:
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -2162,10 +2135,10 @@ index bff338a903e58..36acee528ce6f 100644
  #endif
  #if defined(__i386__) || defined(__arm__)
 diff --git a/sandbox/policy/linux/bpf_renderer_policy_linux.cc b/sandbox/policy/linux/bpf_renderer_policy_linux.cc
-index 0555a85bc6a2a..8f8907f4eb18b 100644
+index 0555a85..8f8907f 100644
 --- a/sandbox/policy/linux/bpf_renderer_policy_linux.cc
 +++ b/sandbox/policy/linux/bpf_renderer_policy_linux.cc
-@@ -82,7 +82,7 @@ ResultExpr RendererProcessPolicy::EvaluateSyscall(int sysno) const {
+@@ -82,7 +82,7 @@
      case __NR_ftruncate64:
  #endif
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -2175,10 +2148,10 @@ index 0555a85bc6a2a..8f8907f4eb18b 100644
      case __NR_setrlimit:
  // We allow setrlimit to dynamically adjust the address space limit as
 diff --git a/sandbox/policy/linux/bpf_service_policy_linux.cc b/sandbox/policy/linux/bpf_service_policy_linux.cc
-index 32754e67be3d6..3f42eabba94c7 100644
+index 32754e6..3f42eabb 100644
 --- a/sandbox/policy/linux/bpf_service_policy_linux.cc
 +++ b/sandbox/policy/linux/bpf_service_policy_linux.cc
-@@ -26,7 +26,7 @@ ResultExpr ServiceProcessPolicy::EvaluateSyscall(int sysno) const {
+@@ -26,7 +26,7 @@
        return RestrictIoctl();
        // Allow the system calls below.
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -2188,10 +2161,10 @@ index 32754e67be3d6..3f42eabba94c7 100644
  #endif
  #if defined(__i386__) || defined(__arm__)
 diff --git a/sandbox/policy/linux/bpf_utility_policy_linux.cc b/sandbox/policy/linux/bpf_utility_policy_linux.cc
-index e299ce998b9bd..ed1106898ec33 100644
+index e299ce99..ed110689 100644
 --- a/sandbox/policy/linux/bpf_utility_policy_linux.cc
 +++ b/sandbox/policy/linux/bpf_utility_policy_linux.cc
-@@ -34,7 +34,7 @@ ResultExpr UtilityProcessPolicy::EvaluateSyscall(int sysno) const {
+@@ -34,7 +34,7 @@
      case __NR_fdatasync:
      case __NR_fsync:
  #if defined(__i386__) || defined(__x86_64__) || defined(__mips__) || \
@@ -2200,6 +2173,3 @@ index e299ce998b9bd..ed1106898ec33 100644
      case __NR_getrlimit:
  #endif
  #if defined(__i386__) || defined(__arm__)
--- 
-2.43.0
-
