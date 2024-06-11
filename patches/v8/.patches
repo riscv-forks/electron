@@ -3,5 +3,5 @@ deps_add_v8_object_setinternalfieldfornodecore.patch
 fix_disable_scope_reuse_associated_dchecks.patch
 revert_heap_add_checks_position_info.patch
 revert_api_cleanup_remove_setaccessor_and_setnativedataproperty.patch
-Skip-check-sv57-when-enable-pointer-compress.patch
 avoid-cpu-probing-in-li_ptr.patch
+0001-supress-Wunused-function-in-riscv-assembler-riscv.cc.patch
