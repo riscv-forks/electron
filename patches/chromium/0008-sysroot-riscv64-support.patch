@@ -1,17 +1,18 @@
-From 5558b456a8249fb2c1fc1069b5c7d2e39715f8ee Mon Sep 17 00:00:00 2001
+From f9701e1cd68627f419e1f89d38e89c704bd4846c Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 10:10:53 +0800
 Subject: [PATCH] sysroot: riscv64 support
 
+Patch-Dir: src/electron/patches/chromium
+Patch-Filename: 0008-sysroot-riscv64-support.patch
 ---
- build/config/sysroot.gni                      |   4 +-
- .../linux/sysroot_scripts/install-sysroot.py  |   9 +-
- .../linux/sysroot_scripts/sysroot_creator.py  | 269 +++++++++++-------
- build/linux/sysroot_scripts/sysroots.json     |   7 +
- 4 files changed, 189 insertions(+), 100 deletions(-)
+ build/config/sysroot.gni                       | 4 +++-
+ build/linux/sysroot_scripts/install-sysroot.py | 8 +++++---
+ build/linux/sysroot_scripts/sysroots.json      | 7 +++++++
+ 3 files changed, 15 insertions(+), 4 deletions(-)
 
 diff --git a/build/config/sysroot.gni b/build/config/sysroot.gni
-index 0f36edd9e5bb2..29b95c690aa74 100644
+index 47fe4cbc840dd..965890580f417 100644
 --- a/build/config/sysroot.gni
 +++ b/build/config/sysroot.gni
 @@ -22,7 +22,7 @@ declare_args() {
@@ -33,56 +34,54 @@ index 0f36edd9e5bb2..29b95c690aa74 100644
        assert(false, "No linux sysroot for cpu: $target_cpu")
      }
 diff --git a/build/linux/sysroot_scripts/install-sysroot.py b/build/linux/sysroot_scripts/install-sysroot.py
-index a2ac8305d8ca7..eadca7aeb7b76 100755
+index abd58136efc83..22b63794f1e7c 100755
 --- a/build/linux/sysroot_scripts/install-sysroot.py
 +++ b/build/linux/sysroot_scripts/install-sysroot.py
-@@ -35,7 +35,7 @@ from urllib.request import urlopen
+@@ -36,7 +36,7 @@ from urllib.request import urlopen
  SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
  SRC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
  
--VALID_ARCHS = ('amd64', 'i386', 'armhf', 'arm64', 'armel', 'mipsel', 'mips64el')
-+VALID_ARCHS = ('amd64', 'i386', 'armhf', 'arm64', 'armel', 'mipsel', 'mips64el', 'riscv64')
+-VALID_ARCHS = ("amd64", "i386", "armhf", "arm64", "mipsel", "mips64el")
++VALID_ARCHS = ("amd64", "i386", "armhf", "arm64", "mipsel", "mips64el", "riscv64")
  
  ARCH_TRANSLATIONS = {
-     'x64': 'amd64',
-@@ -86,15 +86,18 @@ def main(args):
+     "x64": "amd64",
+@@ -89,14 +89,16 @@ def main(args):
+         sysroots_json_path = DEFAULT_SYSROOTS_PATH
  
-   if options.print_key:
-     arch = options.print_key
-+    target_platform = 'sid' if arch == 'riscv64' else DEFAULT_TARGET_PLATFORM
-     print(
--        GetSysrootDict(sysroots_json_path, DEFAULT_TARGET_PLATFORM,
-+        GetSysrootDict(sysroots_json_path, target_platform,
-                        ARCH_TRANSLATIONS.get(arch, arch))['Key'])
-     return 0
-   if options.arch:
--    InstallSysroot(sysroots_json_path, DEFAULT_TARGET_PLATFORM,
-+    target_platform = 'sid' if options.arch == 'riscv64' else DEFAULT_TARGET_PLATFORM
-+    InstallSysroot(sysroots_json_path, target_platform,
-                    ARCH_TRANSLATIONS.get(options.arch, options.arch))
-   elif options.all:
-     for arch in VALID_ARCHS:
-+      target_platform = 'sid' if arch == 'riscv64' else DEFAULT_TARGET_PLATFORM
-       InstallSysroot(sysroots_json_path, DEFAULT_TARGET_PLATFORM, arch)
-   else:
-     print('You much specify one of the options.')
+     if options.arch:
++        target_platform = 'sid' if options.arch == 'riscv64' else DEFAULT_TARGET_PLATFORM
+         InstallSysroot(
+             sysroots_json_path,
+-            DEFAULT_TARGET_PLATFORM,
++            target_platform,
+             ARCH_TRANSLATIONS.get(options.arch, options.arch),
+         )
+     elif options.all:
+         for arch in VALID_ARCHS:
+-            InstallSysroot(sysroots_json_path, DEFAULT_TARGET_PLATFORM, arch)
++            target_platform = 'sid' if arch == 'riscv64' else DEFAULT_TARGET_PLATFORM
++            InstallSysroot(sysroots_json_path, target_platform, arch)
+     else:
+         print("You much specify one of the options.")
+         return 1
 diff --git a/build/linux/sysroot_scripts/sysroots.json b/build/linux/sysroot_scripts/sysroots.json
-index fa41c468953a2..742e43572f52a 100644
+index f146ea68bc72d..82d393d9f4b2f 100644
 --- a/build/linux/sysroot_scripts/sysroots.json
 +++ b/build/linux/sysroot_scripts/sysroots.json
-@@ -47,5 +47,12 @@
+@@ -34,5 +34,12 @@
          "SysrootDir": "debian_bullseye_mipsel-sysroot",
          "Tarball": "debian_bullseye_mipsel_sysroot.tar.xz",
-         "URL": "https://commondatastorage.googleapis.com/chrome-linux-sysroot/toolchain"
+         "URL": "https://commondatastorage.googleapis.com/chrome-linux-sysroot"
 +    },
 +    "sid_riscv64": {
-+        "Key": "20240131T153825Z-1",
++        "Key": "20240131T153825Z-4",
 +        "Sha1Sum": "d8849d433e2c857b2a052812135115c91f96f54f",
 +        "SysrootDir": "debian_sid_riscv64-sysroot",
 +        "Tarball": "debian_sid_riscv64_sysroot.tar.xz",
-+        "URL": "https://github.com/riscv-forks/electron/releases/download/sysroot-20240131T153825Z-1/debian_sid_riscv64_sysroot.tar.xz"
++        "URL": "https://github.com/riscv-forks/electron/releases/download/sysroot-20240131T153825Z-4/debian_sid_riscv64_sysroot.tar.xz"
      }
  }
 -- 
-2.43.0
+2.39.2
 
