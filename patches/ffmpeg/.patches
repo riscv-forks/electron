@@ -1,2 +1,2 @@
-riscv-ffmpeg.patch
 link_with_loader_path.patch
+0001-ffmpeg-generate-riscv64-changes.patch
