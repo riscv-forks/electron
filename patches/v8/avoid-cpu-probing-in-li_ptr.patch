@@ -1,7 +1,7 @@
-From 9a41b6af6bfa3828c52bb34480b297425d384747 Mon Sep 17 00:00:00 2001
+From f5469ae2293603ae32813f43d75ce70a7f23ff46 Mon Sep 17 00:00:00 2001
 From: Levi Zim <rsworktech@outlook.com>
 Date: Mon, 10 Jun 2024 10:06:27 +0800
-Subject: [PATCH] [riscv] avoid cpu probing in li_ptr
+Subject: [PATCH] avoid cpu probing in li_ptr
 
 CPU probing is an expensive thing to do and we should avoid doing it upon every li_ptr call.
 
@@ -9,24 +9,15 @@ Fixes performance regresion bisected in https://github.com/riscv-forks/electron/
 
 Change-Id: Ib5ff89b2a730e08de6735123ae60adeffe811ed8
 ---
+ AUTHORS                              | 1 +
+ src/codegen/riscv/assembler-riscv.cc | 1 -
+ 2 files changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/AUTHORS b/AUTHORS
-index c2fea2c..f0dcf70 100644
---- a/AUTHORS
-+++ b/AUTHORS
-@@ -182,6 +182,7 @@
- Keyhan Vakil <kvakil@googlecontrib.kvakil.me>
- Kris Selden <kris.selden@gmail.com>
- Kyounga Ra <kyounga@alticast.com>
-+Levi Zim <rsworktech@outlook.com>
- Loo Rong Jie <loorongjie@gmail.com>
- Lu Yahan <yahan@iscas.ac.cn>
- Ludovic Mermod <ludovic.mermod@gmail.com>
 diff --git a/src/codegen/riscv/assembler-riscv.cc b/src/codegen/riscv/assembler-riscv.cc
-index 5c54f46..028e019 100644
+index fa05592ea58..484d6813cbb 100644
 --- a/src/codegen/riscv/assembler-riscv.cc
 +++ b/src/codegen/riscv/assembler-riscv.cc
-@@ -1104,7 +1104,6 @@
+@@ -1069,7 +1069,6 @@ void Assembler::GeneralLi(Register rd, int64_t imm) {
  }
  
  void Assembler::li_ptr(Register rd, int64_t imm) {
@@ -34,3 +25,6 @@ index 5c54f46..028e019 100644
    // Initialize rd with an address
    // Pointers are 48 bits
    // 6 fixed instructions are generated
+-- 
+2.39.2
+
