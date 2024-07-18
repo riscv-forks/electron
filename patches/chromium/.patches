@@ -1,4 +1,5 @@
 0001-Work-around-GN-false-positive-unused-variable-error.patch
+unscaledcycleclock-remove-riscv-support.patch
 0001-clang-add-riscv64-support-to-package-script.patch
 0001-rust-toolchain-fix-float-target-abi-for-riscv64.patch
 0001-extensions-common-api-runtime.json-riscv64-support.patch
