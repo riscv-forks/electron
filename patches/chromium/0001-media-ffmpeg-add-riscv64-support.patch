@@ -1,4 +1,4 @@
-From 8c1cb3b1cc25d522fbbb22a4e4f3346361bfe744 Mon Sep 17 00:00:00 2001
+From 63673bac825672ee9a62191bed7486253a471077 Mon Sep 17 00:00:00 2001
 From: Levi Zim <rsworktech@outlook.com>
 Date: Tue, 11 Jun 2024 04:14:28 +0200
 Subject: [PATCH] media/ffmpeg: add riscv64 support
@@ -10,10 +10,10 @@ Subject: [PATCH] media/ffmpeg: add riscv64 support
  3 files changed, 17 insertions(+), 3 deletions(-)
 
 diff --git a/media/ffmpeg/scripts/build_ffmpeg.py b/media/ffmpeg/scripts/build_ffmpeg.py
-index 75589ce6a2181..548dd13a22be7 100755
+index 9c653ac53574d..77e7433056b1e 100755
 --- a/media/ffmpeg/scripts/build_ffmpeg.py
 +++ b/media/ffmpeg/scripts/build_ffmpeg.py
-@@ -43,7 +43,7 @@ BRANDINGS = [
+@@ -42,7 +42,7 @@ BRANDINGS = [
  
  ARCH_MAP = {
      'android': ['ia32', 'x64', 'arm-neon', 'arm64'],
@@ -22,7 +22,7 @@ index 75589ce6a2181..548dd13a22be7 100755
      'mac': ['x64', 'arm64'],
      'win': ['ia32', 'x64', 'arm64'],
  }
-@@ -898,6 +898,20 @@ def ConfigureAndBuild(target_arch, target_os, host_os, host_arch,
+@@ -897,6 +897,20 @@ def ConfigureAndBuild(target_arch, target_os, host_os, host_arch,
                      '--extra-cflags=--target=mips64el-linux-gnuabi64',
                      '--extra-ldflags=--target=mips64el-linux-gnuabi64',
                  ])
@@ -44,16 +44,16 @@ index 75589ce6a2181..548dd13a22be7 100755
              print('Error: Unknown target arch %r for target OS %r!' %
                    (target_arch, target_os),
 diff --git a/media/ffmpeg/scripts/generate_gn.py b/media/ffmpeg/scripts/generate_gn.py
-index e2d6b7ef211c7..41824671fed0c 100755
+index 12455913ea76f..4611c274bf161 100755
 --- a/media/ffmpeg/scripts/generate_gn.py
 +++ b/media/ffmpeg/scripts/generate_gn.py
-@@ -80,7 +80,7 @@ GN_SOURCE_END = """]
+@@ -78,7 +78,7 @@ GN_SOURCE_END = """]
  _Attrs = ('ARCHITECTURE', 'TARGET', 'PLATFORM')
  Attr = collections.namedtuple('Attr', _Attrs)(*_Attrs)
  SUPPORT_MATRIX = {
 -    Attr.ARCHITECTURE: set(['ia32', 'x64', 'arm', 'arm64', 'arm-neon']),
 +    Attr.ARCHITECTURE: set(['ia32', 'x64', 'arm', 'arm64', 'arm-neon', 'riscv64']),
-     Attr.TARGET: set(['Chromium', 'Chrome', 'ChromeOS']),
+     Attr.TARGET: set(['Chromium', 'Chrome']),
      Attr.PLATFORM: set(['android', 'linux', 'win', 'mac'])
  }
 diff --git a/media/ffmpeg/scripts/robo_lib/config.py b/media/ffmpeg/scripts/robo_lib/config.py
@@ -70,5 +70,5 @@ index 84a6bf5196d95..7f0c3d0a7f221 100644
                      if "Ubuntu" in result or "Debian" in result:
                          self._os_flavor = packages.OsFlavor.Debian
 -- 
-2.45.2
+2.39.2
 

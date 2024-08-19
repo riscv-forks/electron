@@ -1,15 +1,15 @@
-From 9a31fc0b4551ff232ba0847d36b38bc076a8ae6a Mon Sep 17 00:00:00 2001
+From d4ad1cebe159d14a52df48a5d0f7371e2198e616 Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 11:04:32 +0800
 Subject: [PATCH] clang: add riscv64 support to package script
 
 And drop android and fuchsia build to reduce build time.
 ---
- tools/clang/scripts/package.py | 65 ++++++++++------------------------
- 1 file changed, 18 insertions(+), 47 deletions(-)
+ tools/clang/scripts/package.py | 62 ++++++++++------------------------
+ 1 file changed, 18 insertions(+), 44 deletions(-)
 
 diff --git a/tools/clang/scripts/package.py b/tools/clang/scripts/package.py
-index cc5a4a5536d85..f144b87e8686c 100755
+index 558d7fd2220ea..bebbbaf75c582 100755
 --- a/tools/clang/scripts/package.py
 +++ b/tools/clang/scripts/package.py
 @@ -246,7 +246,7 @@ def main():
@@ -21,27 +21,24 @@ index cc5a4a5536d85..f144b87e8686c 100755
      ]
      if args.build_mac_arm:
        build_cmd.append('--build-mac-arm')
-@@ -299,19 +299,6 @@ def main():
+@@ -305,16 +305,6 @@ def main():
          # Add llvm-readobj (symlinked from llvm-readelf) for extracting SONAMEs.
          'bin/llvm-readobj',
      ])
 -    if sys.platform != 'darwin':
 -      # The Fuchsia runtimes are only built on non-Mac platforms.
--      want.append(
--          'lib/clang/$V/lib/aarch64-unknown-fuchsia/libclang_rt.builtins.a')
--      want.append(
--          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.builtins.a')
--      want.append(
--          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.profile.a')
--      want.append('lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan.so')
--      want.append(
--          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan-preinit.a')
--      want.append(
--          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan_static.a')
+-      want.update([
+-          'lib/clang/$V/lib/aarch64-unknown-fuchsia/libclang_rt.builtins.a',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.builtins.a',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.profile.a',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan.so',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan-preinit.a',
+-          'lib/clang/$V/lib/x86_64-unknown-fuchsia/libclang_rt.asan_static.a',
+-      ])
    if sys.platform == 'darwin':
-     want.extend([
-       # Add llvm-objcopy for its use as install_name_tool.
-@@ -349,36 +336,25 @@ def main():
+     runtime_package_name = 'clang-mac-runtime-library'
+     runtime_packages = set([
+@@ -358,36 +348,25 @@ def main():
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.a.syms',
@@ -84,7 +81,7 @@ index cc5a4a5536d85..f144b87e8686c 100755
  
          # crtstart/crtend for Linux and Lacros.
          'lib/clang/$V/lib/aarch64-unknown-linux-gnu/clang_rt.crtbegin.o',
-@@ -387,12 +363,8 @@ def main():
+@@ -396,12 +375,8 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/clang_rt.crtend.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtbegin.o',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/clang_rt.crtend.o',
@@ -99,7 +96,7 @@ index cc5a4a5536d85..f144b87e8686c 100755
  
          # MemorySanitizer C runtime (pure C won't link with *_cxx).
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.msan.a',
-@@ -407,34 +379,33 @@ def main():
+@@ -416,34 +391,33 @@ def main():
          'lib/clang/$V/lib/armv7-unknown-linux-gnueabihf/libclang_rt.profile.a',
          'lib/clang/$V/lib/i386-unknown-linux-gnu/libclang_rt.profile.a',
          'lib/clang/$V/lib/x86_64-unknown-linux-gnu/libclang_rt.profile.a',

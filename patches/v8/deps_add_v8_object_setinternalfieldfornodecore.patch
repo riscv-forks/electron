@@ -1,7 +1,7 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From df7ba87445a34412eb5c850a02c2328a90178a82 Mon Sep 17 00:00:00 2001
 From: Shelley Vohr <shelley.vohr@gmail.com>
 Date: Tue, 14 Nov 2023 17:48:11 +0100
-Subject: deps: add v8::Object::SetInternalFieldForNodeCore()
+Subject: [PATCH] deps: add v8::Object::SetInternalFieldForNodeCore()
 
 This is a non-ABI breaking solution added by Node.js in v20.x for:
 
@@ -9,9 +9,13 @@ This is a non-ABI breaking solution added by Node.js in v20.x for:
 * https://chromium-review.googlesource.com/c/v8/v8/+/4707972
 
 which are necessary for backporting the vm-related memory fixes in https://github.com/nodejs/node/pull/48510.
+---
+ include/v8-object.h | 17 +++++++++++++++++
+ src/api/api.cc      | 23 +++++++++++++++++++++--
+ 2 files changed, 38 insertions(+), 2 deletions(-)
 
 diff --git a/include/v8-object.h b/include/v8-object.h
-index d03b33acd7c83ef1e683e2ddc4eb6c1ecafd83b3..626425af0b121e3489e7ac8171af64b1c7a25f55 100644
+index 71a6c2c9c14..ad8416ea250 100644
 --- a/include/v8-object.h
 +++ b/include/v8-object.h
 @@ -22,6 +22,8 @@ class Function;
@@ -46,11 +50,11 @@ index d03b33acd7c83ef1e683e2ddc4eb6c1ecafd83b3..626425af0b121e3489e7ac8171af64b1
    V8_INLINE static void* GetAlignedPointerFromInternalField(
        const BasicTracedReference<Object>& object, int index) {
 diff --git a/src/api/api.cc b/src/api/api.cc
-index f8d3c5aa1231f4b62a614bc0c705366d922b4c75..88118ae452275ff2a515c5efbad4f6ecb3629abd 100644
+index 16e897a0b57..e47a5ff9c92 100644
 --- a/src/api/api.cc
 +++ b/src/api/api.cc
-@@ -6372,14 +6372,33 @@ Local<Data> v8::Object::SlowGetInternalField(int index) {
-       isolate);
+@@ -6384,14 +6384,33 @@ Local<Data> v8::Object::SlowGetInternalField(int index) {
+       i::Cast<i::JSObject>(*obj)->GetEmbedderField(index), isolate));
  }
  
 -void v8::Object::SetInternalField(int index, v8::Local<Data> value) {
@@ -85,3 +89,6 @@ index f8d3c5aa1231f4b62a614bc0c705366d922b4c75..88118ae452275ff2a515c5efbad4f6ec
  void* v8::Object::SlowGetAlignedPointerFromInternalField(v8::Isolate* isolate,
                                                           int index) {
    auto obj = Utils::OpenDirectHandle(this);
+-- 
+2.45.2
+
