@@ -1,4 +1,4 @@
-From 2e3856476eda902536e5cda5d0e4dc9ed0be3653 Mon Sep 17 00:00:00 2001
+From f622b65c86800923874d07c91e67d318130df6a1 Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 09:19:00 +0800
 Subject: [PATCH] clang toolchain: riscv64 support
@@ -9,10 +9,10 @@ Subject: [PATCH] clang toolchain: riscv64 support
  2 files changed, 22 insertions(+), 1 deletion(-)
 
 diff --git a/build/config/clang/BUILD.gn b/build/config/clang/BUILD.gn
-index e63990575e319..831ae2a90540e 100644
+index e6d80a8d485f1..2d3d394ccfabe 100644
 --- a/build/config/clang/BUILD.gn
 +++ b/build/config/clang/BUILD.gn
-@@ -164,6 +164,8 @@ template("clang_lib") {
+@@ -198,6 +198,8 @@ template("clang_lib") {
            _dir = "armv7-unknown-linux-gnueabihf"
          } else if (current_cpu == "arm64") {
            _dir = "aarch64-unknown-linux-gnu"
@@ -22,13 +22,13 @@ index e63990575e319..831ae2a90540e 100644
            assert(false)  # Unhandled cpu type
          }
 diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
-index 15e91526c4018..75e3f5068741f 100755
+index 71f75fded5b0a..de8299b9f82c7 100755
 --- a/tools/clang/scripts/build.py
 +++ b/tools/clang/scripts/build.py
-@@ -596,10 +596,17 @@ def DownloadDebianSysroot(platform_name, skip_download=False):
-       'arm': '0b9a3c54d2d5f6b1a428369aaa8d7ba7b227f701',
-       # hash from https://chromium-review.googlesource.com/c/chromium/src/+/3684954/1/build/linux/sysroot_scripts/sysroots.json#12
-       'arm64': '0e28d9832614729bb5b731161ff96cb4d516f345',
+@@ -586,10 +586,17 @@ def DownloadDebianSysroot(platform_name, skip_download=False):
+       'arm': 'fe81e7114b97440262bce004caf02c1514732e2fa7f99693b2836932ad1c4626',
+       # hash from https://chromium-review.googlesource.com/c/chromium/src/+/5506275/1/build/linux/sysroot_scripts/sysroots.json#21
+       'arm64': '308e23faba3174bd01accfe358467b8a40fad4db4c49ef629da30219f65a275f',
 +      'riscv64': 'SKIP',
    }
  
@@ -41,10 +41,10 @@ index 15e91526c4018..75e3f5068741f 100755
 +  if hashes[platform_name] == 'SKIP':
 +    return output
 +
-   U = toolchain_bucket + hashes[platform_name] + '/' + toolchain_name + \
-       '.tar.xz'
+   U = toolchain_bucket + hashes[platform_name]
    if not skip_download:
-@@ -902,6 +909,7 @@ def main():
+     DownloadAndUnpack(U, output)
+@@ -882,6 +889,7 @@ def main():
      sysroot_i386 = DownloadDebianSysroot('i386', args.skip_checkout)
      sysroot_arm = DownloadDebianSysroot('arm', args.skip_checkout)
      sysroot_arm64 = DownloadDebianSysroot('arm64', args.skip_checkout)
@@ -52,7 +52,7 @@ index 15e91526c4018..75e3f5068741f 100755
  
      # Add the sysroot to base_cmake_args.
      if platform.machine() == 'aarch64':
-@@ -1228,6 +1236,17 @@ def main():
+@@ -1240,6 +1248,17 @@ def main():
          "sanitizers":
          True,
      }
