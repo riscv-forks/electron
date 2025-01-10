@@ -1,15 +1,17 @@
-From 6ebca54e1555c29e7b82b39d9d6035c5f767e0eb Mon Sep 17 00:00:00 2001
+From d5ce04b4b3153fff750c4342f3cd0431e0a0a401 Mon Sep 17 00:00:00 2001
 From: Levi Zim <rsworktech@outlook.com>
 Date: Mon, 19 Aug 2024 16:18:33 +0200
 Subject: [PATCH] Fix errors in libavutil
 
 Not actually errors. These warnings are considered as errors.
+Patch-Dir: src/electron/patches/ffmpeg
+Patch-Filename: 0001-Fix-errors-in-libavutil.patch
 ---
  libavutil/riscv/cpu.c | 3 +++
  1 file changed, 3 insertions(+)
 
 diff --git a/libavutil/riscv/cpu.c b/libavutil/riscv/cpu.c
-index 73abd289a6..35b0b3341a 100644
+index 4ec6d6c826..9e2b376f5e 100644
 --- a/libavutil/riscv/cpu.c
 +++ b/libavutil/riscv/cpu.c
 @@ -18,7 +18,9 @@
@@ -28,8 +30,8 @@ index 73abd289a6..35b0b3341a 100644
              default:
 +		; /* fallthrough */
          }
-     } else
- #endif
+     }
+ #elif HAVE_GETAUXVAL
 -- 
-2.45.2
+2.39.2
 
