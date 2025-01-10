@@ -1,0 +1,60 @@
+From 1e002e4a2ecac2efce5eca9f2e22d31041ab821a Mon Sep 17 00:00:00 2001
+From: Lu Yahan <yahan@iscas.ac.cn>
+Date: Mon, 18 Nov 2024 14:53:35 +0800
+Subject: [PATCH] [riscv] Fix build failed for native
+
+Change-Id: I9b5e0b13390e85734691b2817e76beefda3be3c0
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/6027486
+Auto-Submit: Yahan Lu (LuYahan) <yahan@iscas.ac.cn>
+Reviewed-by: Ji Qiu <qiuji@iscas.ac.cn>
+Commit-Queue: Ji Qiu <qiuji@iscas.ac.cn>
+Commit-Queue: Yahan Lu (LuYahan) <yahan@iscas.ac.cn>
+Cr-Commit-Position: refs/heads/main@{#97251}
+---
+ src/compiler/backend/riscv/code-generator-riscv.cc        | 8 ++++++++
+ .../backend/riscv/instruction-selector-riscv64.cc         | 2 +-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/compiler/backend/riscv/code-generator-riscv.cc b/src/compiler/backend/riscv/code-generator-riscv.cc
+index 10d50fba9be..39f2496d0e6 100644
+--- a/src/compiler/backend/riscv/code-generator-riscv.cc
++++ b/src/compiler/backend/riscv/code-generator-riscv.cc
+@@ -3742,12 +3742,20 @@ CodeGenerator::CodeGenResult CodeGenerator::AssembleArchInstruction(
+       break;
+     }
+     case kRiscvEnableDebugTrace: {
++#ifdef USE_SIMULATOR
+       __ Debug(TRACE_ENABLE | LOG_TRACE | LOG_REGS);
+       break;
++#else
++      UNREACHABLE();
++#endif
+     }
+     case kRiscvDisableDebugTrace: {
++#ifdef USE_SIMULATOR
+       __ Debug(TRACE_DISABLE | LOG_TRACE | LOG_REGS);
+       break;
++#else
++      UNREACHABLE();
++#endif
+     }
+     default:
+ #ifdef DEBUG
+diff --git a/src/compiler/backend/riscv/instruction-selector-riscv64.cc b/src/compiler/backend/riscv/instruction-selector-riscv64.cc
+index d5254d4da7e..115e06a7412 100644
+--- a/src/compiler/backend/riscv/instruction-selector-riscv64.cc
++++ b/src/compiler/backend/riscv/instruction-selector-riscv64.cc
+@@ -2294,9 +2294,9 @@ void VisitWord32Compare(InstructionSelectorT<Adapter>* selector,
+                         FlagsContinuationT<Adapter>* cont) {
+   if constexpr (Adapter::IsTurboshaft) {
+     using namespace turboshaft;  // NOLINT(build/namespaces)
++#ifdef USE_SIMULATOR
+     const Operation& lhs = selector->Get(selector->input_at(node, 0));
+     const Operation& rhs = selector->Get(selector->input_at(node, 1));
+-#ifdef USE_SIMULATOR
+     if (lhs.Is<DidntThrowOp>() || rhs.Is<DidntThrowOp>()) {
+       VisitFullWord32Compare(selector, node, kRiscvCmp, cont);
+     } else
+-- 
+2.39.2
+
