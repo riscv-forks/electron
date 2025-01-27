@@ -4,8 +4,6 @@ This repo is a fork of electron with riscv64 support added.
 
 Status: Work In Progress
 
-**Note**: [A performance regression](https://github.com/riscv-forks/electron/issues/1) is fixed recently and only the latest versions and v29.4.0 are rebuilt. Please upgrade if you still using other versions.
-
 Releases are published in https://github.com/riscv-forks/electron-riscv-releases
 
 ## Repo Organization
