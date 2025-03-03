@@ -1,0 +1,31 @@
+From b67b299b6b87066e52097677d091f7b2951bcadf Mon Sep 17 00:00:00 2001
+From: Yuri Gaevsky <yuri.gaevsky@syntacore.com>
+Date: Fri, 14 Feb 2025 19:04:05 +0300
+Subject: [PATCH 2/3] [riscv][maglev] replace wrong Branch instruction by Call
+
+Change-Id: I600f8d5bd873e37e47b0c576ff5aacf94ab3f93d
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/6270196
+Reviewed-by: Victor Gomes <victorgomes@chromium.org>
+Reviewed-by: Darius Mercadier <dmercadier@chromium.org>
+Commit-Queue: Victor Gomes <victorgomes@chromium.org>
+Cr-Commit-Position: refs/heads/main@{#98741}
+---
+ src/maglev/riscv/maglev-assembler-riscv-inl.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/maglev/riscv/maglev-assembler-riscv-inl.h b/src/maglev/riscv/maglev-assembler-riscv-inl.h
+index e651780da40..855ce34f405 100644
+--- a/src/maglev/riscv/maglev-assembler-riscv-inl.h
++++ b/src/maglev/riscv/maglev-assembler-riscv-inl.h
+@@ -1397,7 +1397,7 @@ inline void MaglevAssembler::PrepareCallCFunction(int num_reg_arguments,
+ inline void MaglevAssembler::CallSelf() {
+   DCHECK(allow_call());
+   DCHECK(code_gen_state()->entry_label()->is_bound());
+-  MacroAssembler::Branch(code_gen_state()->entry_label());
++  MacroAssembler::Call(code_gen_state()->entry_label());
+ }
+ 
+ inline void MaglevAssembler::Jump(Label* target, Label::Distance distance) {
+-- 
+2.39.2
+
