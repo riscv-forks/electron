@@ -1,4 +1,4 @@
-From f9701e1cd68627f419e1f89d38e89c704bd4846c Mon Sep 17 00:00:00 2001
+From ad8bf2ae08919f3fbf2715d7ee638176a8fdea54 Mon Sep 17 00:00:00 2001
 From: kxxt <rsworktech@outlook.com>
 Date: Sat, 10 Feb 2024 10:10:53 +0800
 Subject: [PATCH] sysroot: riscv64 support
@@ -34,19 +34,19 @@ index 47fe4cbc840dd..965890580f417 100644
        assert(false, "No linux sysroot for cpu: $target_cpu")
      }
 diff --git a/build/linux/sysroot_scripts/install-sysroot.py b/build/linux/sysroot_scripts/install-sysroot.py
-index abd58136efc83..22b63794f1e7c 100755
+index b1f6b17afd1af..081e140bf523d 100755
 --- a/build/linux/sysroot_scripts/install-sysroot.py
 +++ b/build/linux/sysroot_scripts/install-sysroot.py
-@@ -36,7 +36,7 @@ from urllib.request import urlopen
- SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+@@ -37,7 +37,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
  SRC_DIR = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
  
--VALID_ARCHS = ("amd64", "i386", "armhf", "arm64", "mipsel", "mips64el")
-+VALID_ARCHS = ("amd64", "i386", "armhf", "arm64", "mipsel", "mips64el", "riscv64")
+ VALID_ARCHS = ("amd64", "i386", "armhf", "arm64", "mipsel", "mips64el",
+-               "ppc64el")
++               "ppc64el", "riscv64")
  
  ARCH_TRANSLATIONS = {
      "x64": "amd64",
-@@ -89,14 +89,16 @@ def main(args):
+@@ -91,14 +91,16 @@ def main(args):
          sysroots_json_path = DEFAULT_SYSROOTS_PATH
  
      if options.arch:
@@ -66,12 +66,12 @@ index abd58136efc83..22b63794f1e7c 100755
          print("You much specify one of the options.")
          return 1
 diff --git a/build/linux/sysroot_scripts/sysroots.json b/build/linux/sysroot_scripts/sysroots.json
-index f146ea68bc72d..82d393d9f4b2f 100644
+index 2aade5a60861a..8ae67df7bfa53 100644
 --- a/build/linux/sysroot_scripts/sysroots.json
 +++ b/build/linux/sysroot_scripts/sysroots.json
-@@ -34,5 +34,12 @@
-         "SysrootDir": "debian_bullseye_mipsel-sysroot",
-         "Tarball": "debian_bullseye_mipsel_sysroot.tar.xz",
+@@ -40,5 +40,12 @@
+         "SysrootDir": "debian_bullseye_ppc64el-sysroot",
+         "Tarball": "debian_bullseye_ppc64el_sysroot.tar.xz",
          "URL": "https://commondatastorage.googleapis.com/chrome-linux-sysroot"
 +    },
 +    "sid_riscv64": {

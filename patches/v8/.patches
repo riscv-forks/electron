@@ -1,4 +1,5 @@
-0001-riscv-Flush-icache-in-both-local-and-remote-harts.patch
-0001-riscv-Fix-build-failed-for-native.patch
+0001-riscv-leaptiering-Enable-leaptiering-support.patch
+0002-riscv-maglev-replace-wrong-Branch-instruction-by-Cal.patch
+0003-riscv-protect-MacroAssembler-ByteSwap-UnalignedFLoad.patch
 chore_allow_customizing_microtask_policy_per_context.patch
 deps_add_v8_object_setinternalfieldfornodecore.patch
