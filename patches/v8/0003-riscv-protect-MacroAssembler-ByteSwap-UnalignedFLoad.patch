@@ -1,0 +1,109 @@
+From 908a345f53f9a03014d07b35e8630d4123879ffd Mon Sep 17 00:00:00 2001
+From: Yuri Gaevsky <yuri.gaevsky@syntacore.com>
+Date: Mon, 17 Feb 2025 13:40:02 +0300
+Subject: [PATCH 3/3] [riscv] protect
+ MacroAssembler::ByteSwap/UnalignedFLoadHelper from lack of scratch registers
+
+The lack of available scratch registers is possible under high register pressure and has been encountered with `--stress-maglev` option for `browserbench.org` benchmarks.
+
+Change-Id: Ic1eacec0576e577151a55773fd807ac9065400ea
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/6276604
+Reviewed-by: Camillo Bruni <cbruni@chromium.org>
+Commit-Queue: Victor Gomes <victorgomes@chromium.org>
+Reviewed-by: Victor Gomes <victorgomes@chromium.org>
+Cr-Commit-Position: refs/heads/main@{#98742}
+---
+ src/codegen/riscv/macro-assembler-riscv.cc | 44 +++++++++++++++++-----
+ 1 file changed, 35 insertions(+), 9 deletions(-)
+
+diff --git a/src/codegen/riscv/macro-assembler-riscv.cc b/src/codegen/riscv/macro-assembler-riscv.cc
+index 0b04dcc30bd..271690eded7 100644
+--- a/src/codegen/riscv/macro-assembler-riscv.cc
++++ b/src/codegen/riscv/macro-assembler-riscv.cc
+@@ -1832,14 +1832,29 @@ void MacroAssembler::ByteSwap(Register rd, Register rs, int operand_size,
+     }
+     return;
+   }
++  UseScratchRegisterScope temps(this);
++  Register x0 = no_reg;
++  if (temps.CanAcquire()) {
++    x0 = temps.Acquire();
++  } else {
++    push(t1);
++    x0 = t1;
++  }
++  Register x1 = no_reg;
++  if (temps.CanAcquire()) {
++    x1 = temps.Acquire();
++  } else {
++    push(t2);
++    x1 = t2;
++  }
+   DCHECK_NE(scratch, rs);
+   DCHECK_NE(scratch, rd);
++  DCHECK(x0 != x1);
++  DCHECK((rs != x0) && (rs != x1));
++  DCHECK((rd != x0) && (rd != x1));
++  BlockTrampolinePoolScope block_trampoline_pool(this);
+   if (operand_size == 4) {
+-    UseScratchRegisterScope temps(this);
+-    BlockTrampolinePoolScope block_trampoline_pool(this);
+     DCHECK((rd != t6) && (rs != t6));
+-    Register x0 = temps.Acquire();
+-    Register x1 = temps.Acquire();
+     if (scratch == no_reg) {
+       ReverseBytesHelper<8>(rd, rs, x0, x1);
+       srai(rd, rd, 32);
+@@ -1860,11 +1875,7 @@ void MacroAssembler::ByteSwap(Register rd, Register rs, int operand_size,
+       or_(rd, rd, x2);  // (((x0 & x1) << 8)  | ((x0 & (x1 << 8)) >> 8))
+     }
+   } else {
+-    UseScratchRegisterScope temps(this);
+-    BlockTrampolinePoolScope block_trampoline_pool(this);
+     DCHECK((rd != t6) && (rs != t6));
+-    Register x0 = temps.Acquire();
+-    Register x1 = temps.Acquire();
+     if (scratch == no_reg) {
+       ReverseBytesHelper<8>(rd, rs, x0, x1);
+     } else {
+@@ -1893,6 +1904,12 @@ void MacroAssembler::ByteSwap(Register rd, Register rs, int operand_size,
+       or_(rd, rd, x2);  // (((x0 & x1) << 8)  | ((x0 & (x1 << 8)) >> 8))
+     }
+   }
++  if (x1 == t2) {
++    pop(t2);
++  }
++  if (x0 == t1) {
++    pop(t1);
++  }
+ }
+ 
+ #elif V8_TARGET_ARCH_RISCV32
+@@ -2026,7 +2043,13 @@ void MacroAssembler::UnalignedFLoadHelper(FPURegister frd,
+     AdjustBaseAndOffset(&source, scratch_base, OffsetAccessType::TWO_ACCESSES,
+                         NBYTES - 1);
+   }
+-  Register scratch = temps.Acquire();
++  Register scratch = no_reg;
++  if (temps.CanAcquire()) {
++    scratch = temps.Acquire();
++  } else {
++    push(t1);
++    scratch = t1;
++  }
+   Register scratch_other = no_reg;
+   if (temps.CanAcquire()) {
+     scratch_other = temps.Acquire();
+@@ -2044,6 +2067,9 @@ void MacroAssembler::UnalignedFLoadHelper(FPURegister frd,
+   if (scratch_other == t2) {
+     pop(t2);
+   }
++  if (scratch == t1) {
++    pop(t1);
++  }
+ }
+ #elif V8_TARGET_ARCH_RISCV32
+ template <int NBYTES>
+-- 
+2.39.2
+
