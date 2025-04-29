@@ -2,6 +2,7 @@
 0001-extensions-common-api-runtime.json-riscv64-support.patch
 0002-Add-support-for-riscv64-linux.patch
 0007-clang-toolchain-riscv64-support.patch
+0001-HACK-disable-tests-when-building-clang-toolchain.patch
 0008-sysroot-riscv64-support.patch
 0001-media-ffmpeg-add-riscv64-support.patch
 0001-disable-rvv-in-highway-due-to-broken-runtime-dispatc.patch
