@@ -1,3 +1,2 @@
-0001-riscv-Fix-the-RISC-V-build.patch
 chore_allow_customizing_microtask_policy_per_context.patch
 enable_--perf-prof_flag_on_macos.patch
