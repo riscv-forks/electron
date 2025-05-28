@@ -6,6 +6,8 @@
 0008-sysroot-riscv64-support.patch
 0001-media-ffmpeg-add-riscv64-support.patch
 0001-disable-rvv-in-highway-due-to-broken-runtime-dispatc.patch
+0001-cpuinfo-enable-for-riscv64-linux.patch
+0002-xnnpack-enable-riscv64-support.patch
 build_gn.patch
 accelerator.patch
 blink_local_frame.patch
