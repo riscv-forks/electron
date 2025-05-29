@@ -1,4 +1,4 @@
-From 9cb66a36cd3cb9c96f8cca4f96ea9d4b1023c8b5 Mon Sep 17 00:00:00 2001
+From 6637996d330a821847f83907db9dd751983deff9 Mon Sep 17 00:00:00 2001
 From: Levi Zim <rsworktech@outlook.com>
 Date: Wed, 28 May 2025 20:47:02 +0800
 Subject: [PATCH 1/2] cpuinfo: enable for riscv64 linux
@@ -53,5 +53,5 @@ index f7a27ee82601b..be4e1554f540b 100644
      !is_fuchsia &&
      # There's a few arm architectures that are not supported by cpuinfo,
 -- 
-2.39.5
+2.39.2
 
