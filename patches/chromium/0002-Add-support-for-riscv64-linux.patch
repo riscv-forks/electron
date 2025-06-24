@@ -1,11 +1,11 @@
-From faf80cf1af784a0ff733fe2683b88f702289ef28 Mon Sep 17 00:00:00 2001
+From c5745039fa5ec2f2c0775c6d154b3e13f7f4a455 Mon Sep 17 00:00:00 2001
 From: Andreas Schwab <schwab@suse.de>
 Date: Fri, 4 Mar 2022 15:27:35 +0100
 Subject: [PATCH] Add support for riscv64-linux
 
 Change-Id: Ibcdaaba1b0c92a1cd85361b9859370c686832c49
 ---
- sandbox/features.gni                          |    3 +-
+ sandbox/features.gni                          |    4 +-
  sandbox/linux/bpf_dsl/linux_syscall_ranges.h  |    6 +
  sandbox/linux/bpf_dsl/seccomp_macros.h        |   42 +
  .../bpf_dsl_seccomp_unittest.cc               |   22 +
@@ -33,23 +33,21 @@ Change-Id: Ibcdaaba1b0c92a1cd85361b9859370c686832c49
  .../policy/linux/bpf_renderer_policy_linux.cc |    2 +-
  .../policy/linux/bpf_service_policy_linux.cc  |    2 +-
  .../policy/linux/bpf_utility_policy_linux.cc  |    2 +-
- 28 files changed, 1506 insertions(+), 59 deletions(-)
+ 28 files changed, 1507 insertions(+), 59 deletions(-)
  create mode 100644 sandbox/linux/system_headers/riscv64_linux_syscalls.h
 
 diff --git a/sandbox/features.gni b/sandbox/features.gni
-index 8434144118b49..8aa52983f78f8 100644
+index 8c5db2c6fa6cf..2d68f0d6baba2 100644
 --- a/sandbox/features.gni
 +++ b/sandbox/features.gni
-@@ -9,7 +9,8 @@
+@@ -9,4 +9,6 @@
  use_seccomp_bpf = (is_linux || is_chromeos || is_android) &&
                    (current_cpu == "x86" || current_cpu == "x64" ||
                     current_cpu == "arm" || current_cpu == "arm64" ||
 -                   current_cpu == "mipsel" || current_cpu == "mips64el")
 +                   current_cpu == "mipsel" || current_cpu == "mips64el" ||
 +                   current_cpu == "riscv64")
- 
- # SSBD (Speculative Store Bypass Disable) is a mitigation of Spectre Variant 4.
- # As Spectre Variant 4 can be mitigated by site isolation, opt-out SSBD on site
++
 diff --git a/sandbox/linux/bpf_dsl/linux_syscall_ranges.h b/sandbox/linux/bpf_dsl/linux_syscall_ranges.h
 index 1d0590b7dd6ce..3bf3cb2571ec6 100644
 --- a/sandbox/linux/bpf_dsl/linux_syscall_ranges.h
@@ -228,10 +226,10 @@ index 7bde501115bdf..b92ab3901acd8 100644
      return Allow();
    }
 diff --git a/sandbox/linux/seccomp-bpf-helpers/baseline_policy_unittest.cc b/sandbox/linux/seccomp-bpf-helpers/baseline_policy_unittest.cc
-index f290c84327cb4..9fa7f166ed9bc 100644
+index e26eec4b75df2..49a773daf6918 100644
 --- a/sandbox/linux/seccomp-bpf-helpers/baseline_policy_unittest.cc
 +++ b/sandbox/linux/seccomp-bpf-helpers/baseline_policy_unittest.cc
-@@ -274,7 +274,7 @@ BPF_TEST_C(BaselinePolicy, GetRandom, BaselinePolicy) {
+@@ -278,7 +278,7 @@ BPF_TEST_C(BaselinePolicy, GetRandom, BaselinePolicy) {
  }
  
  // Not all architectures can restrict the domain for socketpair().
@@ -240,7 +238,7 @@ index f290c84327cb4..9fa7f166ed9bc 100644
  BPF_DEATH_TEST_C(BaselinePolicy,
                   SocketpairWrongDomain,
                   DEATH_SEGV_MESSAGE(GetErrorMessageContentForTests()),
-@@ -283,7 +283,7 @@ BPF_DEATH_TEST_C(BaselinePolicy,
+@@ -287,7 +287,7 @@ BPF_DEATH_TEST_C(BaselinePolicy,
    std::ignore = socketpair(AF_INET, SOCK_STREAM, 0, sv);
    _exit(1);
  }
@@ -249,7 +247,7 @@ index f290c84327cb4..9fa7f166ed9bc 100644
  
  BPF_TEST_C(BaselinePolicy, EPERM_open, BaselinePolicy) {
    errno = 0;
-@@ -347,7 +347,7 @@ TEST_BASELINE_SIGSYS(__NR_sysinfo)
+@@ -351,7 +351,7 @@ TEST_BASELINE_SIGSYS(__NR_sysinfo)
  TEST_BASELINE_SIGSYS(__NR_syslog)
  TEST_BASELINE_SIGSYS(__NR_timer_create)
  
@@ -259,10 +257,10 @@ index f290c84327cb4..9fa7f166ed9bc 100644
  TEST_BASELINE_SIGSYS(__NR_vserver)
  #endif
 diff --git a/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions.cc b/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions.cc
-index 0ee343b5566ae..8c46b9078483f 100644
+index d7bb709cc7a41..8ae8af7167ae2 100644
 --- a/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions.cc
 +++ b/sandbox/linux/seccomp-bpf-helpers/syscall_parameters_restrictions.cc
-@@ -35,6 +35,7 @@
+@@ -38,6 +38,7 @@
  #include "sandbox/linux/system_headers/linux_time.h"
  
  #if BUILDFLAG(IS_LINUX) && !defined(__arm__) && !defined(__aarch64__) && \
@@ -270,7 +268,7 @@ index 0ee343b5566ae..8c46b9078483f 100644
      !defined(PTRACE_GET_THREAD_AREA)
  // Also include asm/ptrace-abi.h since ptrace.h in older libc (for instance
  // the one in Ubuntu 16.04 LTS) is missing PTRACE_GET_THREAD_AREA.
-@@ -459,8 +460,10 @@ ResultExpr RestrictPtrace() {
+@@ -474,8 +475,10 @@ ResultExpr RestrictPtrace() {
  #endif
    return Switch(request)
        .Cases({
@@ -603,10 +601,10 @@ index 9be7b03ec4377..41b3605dce15d 100644
  };
  
 diff --git a/sandbox/linux/seccomp-bpf/syscall.cc b/sandbox/linux/seccomp-bpf/syscall.cc
-index 6b772c563c7fd..7922e0f53fda4 100644
+index b0cdc71b8f972..ab72f9d697ba9 100644
 --- a/sandbox/linux/seccomp-bpf/syscall.cc
 +++ b/sandbox/linux/seccomp-bpf/syscall.cc
-@@ -23,7 +23,7 @@ namespace sandbox {
+@@ -19,7 +19,7 @@ namespace sandbox {
  namespace {
  
  #if defined(ARCH_CPU_X86_FAMILY) || defined(ARCH_CPU_ARM_FAMILY) || \
@@ -615,7 +613,7 @@ index 6b772c563c7fd..7922e0f53fda4 100644
  // Number that's not currently used by any Linux kernel ABIs.
  const int kInvalidSyscallNumber = 0x351d3;
  #else
-@@ -313,6 +313,28 @@ asm(// We need to be able to tell the kernel exactly where we made a
+@@ -309,6 +309,28 @@ asm(// We need to be able to tell the kernel exactly where we made a
      "2:ret\n"
      ".cfi_endproc\n"
      ".size SyscallAsm, .-SyscallAsm\n"
@@ -644,7 +642,7 @@ index 6b772c563c7fd..7922e0f53fda4 100644
  #endif
      );  // asm
  
-@@ -324,6 +346,10 @@ intptr_t SyscallAsm(intptr_t nr, const intptr_t args[6]);
+@@ -320,6 +342,10 @@ intptr_t SyscallAsm(intptr_t nr, const intptr_t args[6]);
  extern "C" {
  intptr_t SyscallAsm(intptr_t nr, const intptr_t args[8]);
  }
@@ -655,7 +653,7 @@ index 6b772c563c7fd..7922e0f53fda4 100644
  #endif
  
  }  // namespace
-@@ -356,6 +382,10 @@ intptr_t Syscall::Call(int nr,
+@@ -352,6 +378,10 @@ intptr_t Syscall::Call(int nr,
    //                 where that makes sense.
  #if defined(__mips__)
    const intptr_t args[8] = {p0, p1, p2, p3, p4, p5, p6, p7};
@@ -666,7 +664,7 @@ index 6b772c563c7fd..7922e0f53fda4 100644
  #else
    DCHECK_EQ(p6, 0) << " Support for syscalls with more than six arguments not "
                        "added for this architecture";
-@@ -430,6 +460,8 @@ intptr_t Syscall::Call(int nr,
+@@ -426,6 +456,8 @@ intptr_t Syscall::Call(int nr,
      ret = inout;
    }
  
@@ -699,10 +697,10 @@ index 9fbefe3e8b7bc..bca98f0a4ba23 100644
      rc = Syscall::Call(SECCOMP_SYSCALL(ctx),
                         SECCOMP_PARM1(ctx),
 diff --git a/sandbox/linux/services/credentials.cc b/sandbox/linux/services/credentials.cc
-index 1dc91d70aa39e..179700ec2a050 100644
+index 033f22ab2ac38..2dec3c8c95f15 100644
 --- a/sandbox/linux/services/credentials.cc
 +++ b/sandbox/linux/services/credentials.cc
-@@ -87,7 +87,7 @@ bool ChrootToSafeEmptyDir() {
+@@ -90,7 +90,7 @@ bool ChrootToSafeEmptyDir() {
    alignas(16) char stack_buf[PTHREAD_STACK_MIN_CONST];
  
  #if defined(ARCH_CPU_X86_FAMILY) || defined(ARCH_CPU_ARM_FAMILY) || \
@@ -712,7 +710,7 @@ index 1dc91d70aa39e..179700ec2a050 100644
    void* stack = stack_buf + sizeof(stack_buf);
  #else
 diff --git a/sandbox/linux/services/syscall_wrappers.cc b/sandbox/linux/services/syscall_wrappers.cc
-index df4a991be825a..95ab677c83701 100644
+index 4d12e51c422b6..8efcfa6858db2 100644
 --- a/sandbox/linux/services/syscall_wrappers.cc
 +++ b/sandbox/linux/services/syscall_wrappers.cc
 @@ -66,7 +66,7 @@ long sys_clone(unsigned long flags,
@@ -725,10 +723,10 @@ index df4a991be825a..95ab677c83701 100644
    return syscall(__NR_clone, flags, child_stack, ptid, tls, ctid);
  #endif
 diff --git a/sandbox/linux/syscall_broker/broker_process.cc b/sandbox/linux/syscall_broker/broker_process.cc
-index 049f72232e479..2e83d1edfea25 100644
+index 9845f875091c6..23945954a7216 100644
 --- a/sandbox/linux/syscall_broker/broker_process.cc
 +++ b/sandbox/linux/syscall_broker/broker_process.cc
-@@ -121,44 +121,46 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
+@@ -120,44 +120,46 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
    // and are default disabled in Android. So, we should refuse to broker them
    // to be consistent with the platform's restrictions.
    switch (sysno) {
@@ -782,7 +780,7 @@ index 049f72232e479..2e83d1edfea25 100644
      case __NR_stat:
      case __NR_lstat:
  #endif
-@@ -168,7 +170,7 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
+@@ -167,7 +169,7 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
  #if defined(__NR_fstatat64)
      case __NR_fstatat64:
  #endif
@@ -791,7 +789,7 @@ index 049f72232e479..2e83d1edfea25 100644
      case __NR_newfstatat:
  #endif
        return !fast_check || policy_->allowed_command_set.test(COMMAND_STAT);
-@@ -183,7 +185,7 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
+@@ -182,7 +184,7 @@ bool BrokerProcess::IsSyscallBrokerable(int sysno, bool fast_check) const {
        return !fast_check || policy_->allowed_command_set.test(COMMAND_STAT);
  #endif
  
@@ -2267,5 +2265,5 @@ index e299ce998b9bd..ed1106898ec33 100644
  #endif
  #if defined(__i386__) || defined(__arm__)
 -- 
-2.39.2
+2.39.5
 
