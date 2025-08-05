@@ -1,0 +1,50 @@
+From cd0b202df1184635567eb3795c01e563267a729a Mon Sep 17 00:00:00 2001
+From: Lu Yahan <yahan@iscas.ac.cn>
+Date: Thu, 19 Jun 2025 21:58:55 +0800
+Subject: [PATCH] [riscv][maglev] Add some peephole optimisations
+
+Port commit dfa16bc015b2bb6f7e5f5b61f2cd378f2d9d9fcc
+Bug: 425717546
+
+Change-Id: I76b5f4ceca9e93fdd7ca09a0c0277a313537e6c9
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/6656979
+Auto-Submit: Yahan Lu (LuYahan) <yahan@iscas.ac.cn>
+Reviewed-by: Ji Qiu <qiuji@iscas.ac.cn>
+Commit-Queue: Yahan Lu (LuYahan) <yahan@iscas.ac.cn>
+Cr-Commit-Position: refs/heads/main@{#100948}
+---
+ src/maglev/riscv/maglev-ir-riscv.cc | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/src/maglev/riscv/maglev-ir-riscv.cc b/src/maglev/riscv/maglev-ir-riscv.cc
+index 976ee14ff24..5d408e71e95 100644
+--- a/src/maglev/riscv/maglev-ir-riscv.cc
++++ b/src/maglev/riscv/maglev-ir-riscv.cc
+@@ -324,6 +324,24 @@ void Int32Multiply::GenerateCode(MaglevAssembler* masm,
+   // TODO(leszeks): peephole optimise multiplication by a constant.
+   __ Mul32(out, left, Operand(right));
+ }
++
++void Int32MultiplyOverflownBits::SetValueLocationConstraints() {
++  UseRegister(left_input());
++  UseRegister(right_input());
++  DefineAsRegister(this);
++}
++
++void Int32MultiplyOverflownBits::GenerateCode(MaglevAssembler* masm,
++                                              const ProcessingState& state) {
++  Register left = ToRegister(left_input());
++  Register right = ToRegister(right_input());
++  Register out = ToRegister(result());
++
++  // TODO(leszeks): peephole optimise multiplication by a constant.
++  __ Mul32(out, left, right);
++  __ srai(out, out, 32);
++}
++
+ void Int32Divide::SetValueLocationConstraints() {
+   UseRegister(left_input());
+   UseRegister(right_input());
+-- 
+2.39.5
+
