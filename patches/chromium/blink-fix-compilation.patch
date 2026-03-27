@@ -1,0 +1,42 @@
+From 40b2252b7cc7fe503031f9f5cdcb5063f5c00f6a Mon Sep 17 00:00:00 2001
+From: Levi Zim <rsworktech@outlook.com>
+Date: Wed, 25 Mar 2026 02:20:55 -0700
+Subject: [PATCH] [M146] Fix blink compilation for platforms other than x86 and arm
+
+Commit https://crrev.com/c/7649841 forgot to update the generic
+implementation, causing compilation failures for platforms other than
+x86 and arm.
+
+This CL fixes it.
+
+(cherry picked from commit 3bccbdead3efa7e91f7c9d4078106dedaed84fb8)
+
+Bug: 401184803
+Bug: 490533968
+Change-Id: I9460ada952eeaa22fd571d299235fcfb5e1ef1c1
+Reviewed-on: https://chromium-review.googlesource.com/c/chromium/src/+/7666544
+Commit-Queue: Michael Wilson <mjwilson@chromium.org>
+Auto-Submit: Levi Zim <rsworktech@outlook.com>
+Reviewed-by: Michael Wilson <mjwilson@chromium.org>
+Cr-Original-Commit-Position: refs/heads/main@{#1599945}
+Reviewed-on: https://chromium-review.googlesource.com/c/chromium/src/+/7699551
+Commit-Queue: Levi Zim <rsworktech@outlook.com>
+Cr-Commit-Position: refs/branch-heads/7680@{#3187}
+Cr-Branched-From: 76b7d80e5cda23fe6537eed26d68c92e995c7f39-refs/heads/main@{#1582197}
+---
+
+diff --git a/third_party/blink/renderer/platform/audio/delay.cc b/third_party/blink/renderer/platform/audio/delay.cc
+index ea4159a..97db203 100644
+--- a/third_party/blink/renderer/platform/audio/delay.cc
++++ b/third_party/blink/renderer/platform/audio/delay.cc
+@@ -102,8 +102,8 @@
+ #if !(defined(ARCH_CPU_X86_FAMILY) || defined(CPU_ARM_NEON))
+ // Default scalar versions if simd/neon are not available.
+ std::tuple<size_t, size_t> Delay::ProcessARateVector(
+-    float* destination,
+-    uint32_t frames_to_process) const {
++    base::span<float> destination,
++    size_t frames_to_process) const {
+   // We don't have a vectorized version, so just do nothing and return the 0 to
+   // indicate no frames processed and return the current write_index_.
+   return std::make_tuple(0, write_index_);
