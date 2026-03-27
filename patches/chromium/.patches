@@ -1,3 +1,4 @@
+blink-fix-compilation.patch
 0002-Add-support-for-riscv64-linux.patch
 build_gn.patch
 accelerator.patch
