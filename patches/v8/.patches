@@ -1,3 +1,4 @@
+0001-riscv-Flush-icache-in-both-local-and-remote-harts.patch
 chore_allow_customizing_microtask_policy_per_context.patch
 deps_add_v8_object_setinternalfieldfornodecore.patch
 cherry-pick-81155a8f3b20.patch
@@ -25,3 +26,5 @@ cherry-pick-97e828af5cbc.patch
 cherry-pick-ca504d096c39.patch
 cherry-pick-1c7ff4d5477f.patch
 cherry-pick-8834c16acfcc.patch
+0001-supress-Wunused-function-in-riscv-assembler-riscv.cc.patch
+0001-LiftoffAssembler-f16x8-fixup.patch

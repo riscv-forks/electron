@@ -1,0 +1,74 @@
+From 63673bac825672ee9a62191bed7486253a471077 Mon Sep 17 00:00:00 2001
+From: Levi Zim <rsworktech@outlook.com>
+Date: Tue, 11 Jun 2024 04:14:28 +0200
+Subject: [PATCH] media/ffmpeg: add riscv64 support
+
+---
+ media/ffmpeg/scripts/build_ffmpeg.py    | 16 +++++++++++++++-
+ media/ffmpeg/scripts/generate_gn.py     |  2 +-
+ media/ffmpeg/scripts/robo_lib/config.py |  2 +-
+ 3 files changed, 17 insertions(+), 3 deletions(-)
+
+diff --git a/media/ffmpeg/scripts/build_ffmpeg.py b/media/ffmpeg/scripts/build_ffmpeg.py
+index 9c653ac53574d..77e7433056b1e 100755
+--- a/media/ffmpeg/scripts/build_ffmpeg.py
++++ b/media/ffmpeg/scripts/build_ffmpeg.py
+@@ -42,7 +42,7 @@ BRANDINGS = [
+ 
+ ARCH_MAP = {
+     'android': ['ia32', 'x64', 'arm-neon', 'arm64'],
+-    'linux': ['ia32', 'x64', 'noasm-x64', 'arm', 'arm-neon', 'arm64'],
++    'linux': ['ia32', 'x64', 'noasm-x64', 'arm', 'arm-neon', 'arm64', 'riscv64'],
+     'mac': ['x64', 'arm64'],
+     'win': ['ia32', 'x64', 'arm64'],
+ }
+@@ -897,6 +897,20 @@ def ConfigureAndBuild(target_arch, target_os, host_os, host_arch,
+                     '--extra-cflags=--target=mips64el-linux-gnuabi64',
+                     '--extra-ldflags=--target=mips64el-linux-gnuabi64',
+                 ])
++        elif target_arch == "riscv64":
++            configure_flags['Common'].extend([
++              '--arch=riscv64',
++              '--extra-cflags=-march=rv64gc',
++            ])
++            if target_os == 'linux':
++                configure_flags['Common'].extend([
++                    '--enable-cross-compile',
++                    '--target-os=linux',
++                    '--sysroot=' + os.path.join(
++                        CHROMIUM_ROOT_DIR, 'build/linux/debian_sid_riscv64-sysroot'),
++                    '--extra-cflags=--target=riscv64-linux-gnu',
++                    '--extra-ldflags=--target=riscv64-linux-gnu',
++                ])
+         else:
+             print('Error: Unknown target arch %r for target OS %r!' %
+                   (target_arch, target_os),
+diff --git a/media/ffmpeg/scripts/generate_gn.py b/media/ffmpeg/scripts/generate_gn.py
+index 12455913ea76f..4611c274bf161 100755
+--- a/media/ffmpeg/scripts/generate_gn.py
++++ b/media/ffmpeg/scripts/generate_gn.py
+@@ -78,7 +78,7 @@ GN_SOURCE_END = """]
+ _Attrs = ('ARCHITECTURE', 'TARGET', 'PLATFORM')
+ Attr = collections.namedtuple('Attr', _Attrs)(*_Attrs)
+ SUPPORT_MATRIX = {
+-    Attr.ARCHITECTURE: set(['ia32', 'x64', 'arm', 'arm64', 'arm-neon']),
++    Attr.ARCHITECTURE: set(['ia32', 'x64', 'arm', 'arm64', 'arm-neon', 'riscv64']),
+     Attr.TARGET: set(['Chromium', 'Chrome']),
+     Attr.PLATFORM: set(['android', 'linux', 'win', 'mac'])
+ }
+diff --git a/media/ffmpeg/scripts/robo_lib/config.py b/media/ffmpeg/scripts/robo_lib/config.py
+index 84a6bf5196d95..7f0c3d0a7f221 100644
+--- a/media/ffmpeg/scripts/robo_lib/config.py
++++ b/media/ffmpeg/scripts/robo_lib/config.py
+@@ -204,7 +204,7 @@ class RoboConfiguration:
+             self._host_operating_system = "linux"
+ 
+             try:
+-                with open("/etc/lsb-release", "r") as f:
++                with open("/etc/os-release", "r") as f:
+                     result = f.read()
+                     if "Ubuntu" in result or "Debian" in result:
+                         self._os_flavor = packages.OsFlavor.Debian
+-- 
+2.39.2
+
