@@ -1,0 +1,50 @@
+From 639a7d02772c0bc212bc29b6b4eaddbed115488a Mon Sep 17 00:00:00 2001
+From: LuYahan <yahan@iscas.ac.cn>
+Date: Tue, 28 Apr 2026 22:06:00 +0800
+Subject: [PATCH] [riscv][codegen] Fix signed integer overflow in Assembler::GrowBuffer
+
+Port commit 19b8e4cb5e838e786d3883b531765b3b07514dfb
+
+Bug:506629455
+
+Change-Id: Iabb2fbd2f025f3180576d8571873d76c3f6599ea
+Reviewed-on: https://chromium-review.googlesource.com/c/v8/v8/+/7800114
+Reviewed-by: Ji Qiu <qiuji@iscas.ac.cn>
+Auto-Submit: Yahan Lu (LuYahan) <yahan@iscas.ac.cn>
+Commit-Queue: Ji Qiu <qiuji@iscas.ac.cn>
+Cr-Commit-Position: refs/heads/main@{#106902}
+---
+
+diff --git a/src/codegen/riscv/assembler-riscv.cc b/src/codegen/riscv/assembler-riscv.cc
+index ce4de09..e48eb47 100644
+--- a/src/codegen/riscv/assembler-riscv.cc
++++ b/src/codegen/riscv/assembler-riscv.cc
+@@ -1245,13 +1245,7 @@
+   DEBUG_PRINTF("GrowBuffer: %p -> ", buffer_start_);
+   // Compute new buffer size.
+   int old_size = buffer_->size();
+-  int new_size = std::min(2 * old_size, old_size + 1 * MB);
+-
+-  // Some internal data structures overflow for very large buffers,
+-  // they must ensure that kMaximalBufferSize is not too large.
+-  if (new_size > kMaximalBufferSize) {
+-    V8::FatalProcessOutOfMemory(nullptr, "Assembler::GrowBuffer");
+-  }
++  int new_size = ComputeNewBufferSize(BufferGrowthStrategy::kDoubleCapped1MB);
+ 
+   // Set up new buffer.
+   std::unique_ptr<AssemblerBuffer> new_buffer = buffer_->Grow(new_size);
+diff --git a/src/codegen/riscv/assembler-riscv.h b/src/codegen/riscv/assembler-riscv.h
+index e0e0c97..f3c8401 100644
+--- a/src/codegen/riscv/assembler-riscv.h
++++ b/src/codegen/riscv/assembler-riscv.h
+@@ -799,9 +799,6 @@
+   bool is_trampoline_emitted() const { return trampoline_check_ == kMaxInt; }
+ 
+  private:
+-  // Avoid overflows for displacements etc.
+-  static const int kMaximalBufferSize = 512 * MB;
+-
+   // The relocation writer's position is at least kGap bytes below the end of
+   // the generated instructions. This is so that multi-instruction sequences do
+   // not have to check for overflow. The same is true for writes of large
